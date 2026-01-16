@@ -15,6 +15,7 @@ AI 보조를 통해 개발된 웹 기반 실시간 전략/액션 게임 프로�
 주요 기술 스택:
 &lt;img 
 src=&quot;[https://img.shields.io/badge/JavaScript-F7DF1E?style=flat-square&amp;logo=javascript&amp;logoColor=black](https://img.shields.io/badge/JavaScript-F7DF1E?style=flat-square&amp;logo=javascript&amp;logoColor=black)&quot;/&gt; 
+
 <img src="https://img.shields.io/badge/HTML5-E34F26?style=flat-square&logo=html5&logoColor=white"/>
 
 <img src="https://img.shields.io/badge/CSS3-1572B6?style=flat-square&logo=css3&logoColor=white"/>
