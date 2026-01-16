@@ -13,8 +13,7 @@ AI 보조를 통해 개발된 웹 기반 실시간 전략/액션 게임 프로�
 자신들에게 피해를 준 시장에게 복수를 하러 떠나는 모험 		
 
 주요 기술 스택:
-&lt;img 
-src=&quot;[https://img.shields.io/badge/JavaScript-F7DF1E?style=flat-square&amp;logo=javascript&amp;logoColor=black](https://img.shields.io/badge/JavaScript-F7DF1E?style=flat-square&amp;logo=javascript&amp;logoColor=black)&quot;/&gt; 
+![JavaScript](https://img.shields.io/badge/JavaScript-F7DF1E?style=flat-square&logo=javascript&logoColor=black)
 
 <img src="https://img.shields.io/badge/HTML5-E34F26?style=flat-square&logo=html5&logoColor=white"/>
 
