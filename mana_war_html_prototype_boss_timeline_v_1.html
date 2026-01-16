@@ -1,0 +1,1832 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>MANA WAR Prototype</title>
+  <style>
+    :root{
+      font-family:system-ui,-apple-system,Segoe UI,Roboto,"Noto Sans KR",sans-serif;
+
+      /* 등급 컬러 */
+      --c-common:#9aa0a6;      /* 커먼 = 회색 */
+      --c-rare:#b36bff;        /* 레어 */
+      --c-unique:#ff00ff;      /* 유니크 */
+      --c-myth:#ffb400;        /* 신화 */
+      --c-limited:#8b0000;     /* 리미티드 = 진한 빨강 */
+      --c-premium:#59e99c;     /* 프리미엄 */
+      --c-relic:#59e99c;       /* 태초 */
+
+      --bg:#0b1020;
+      --panel:#121a33;
+      --border:#25305a;
+      --ink:#e8ecff;
+    }
+
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--bg);color:var(--ink);display:flex;justify-content:center}
+    .wrap{width:min(1100px,96vw);margin:14px 0 18px}
+
+    .hud{display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:space-between;background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:10px 12px}
+    .hud .left,.hud .right{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+    .chip{background:#0f1630;border:1px solid #27315d;border-radius:999px;padding:6px 10px;display:flex;gap:8px;align-items:center;font-size:13px}
+    .chip b{font-weight:1000}
+    .warn{background:rgba(255,71,71,.12);border-color:rgba(255,71,71,.55)}
+
+    .progressWrap{margin-top:10px;background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:10px 12px;display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+    .progressLine{flex:1;min-width:420px;display:flex;gap:10px;align-items:center}
+    .barOuter{flex:1;height:12px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.14);border-radius:999px;overflow:hidden}
+    .barInner{height:100%;width:0%;background:rgba(255,255,255,.85)}
+
+    canvas{width:100%;height:auto;background:linear-gradient(180deg,#0b1020 0%,#0b1020 60%,#0a0f1d 100%);border:1px solid var(--border);border-radius:14px;display:block;margin-top:10px}
+
+    .bar{margin-top:10px;background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:10px 12px;display:flex;gap:10px;flex-wrap:wrap;align-items:flex-start;justify-content:space-between}
+    .cards{display:flex;gap:10px;flex-wrap:wrap}
+    button.card{background:#0f1630;color:var(--ink);border:1px solid #27315d;border-radius:12px;padding:10px 12px;min-width:210px;text-align:left;cursor:pointer}
+    button.card:disabled{opacity:.45;cursor:not-allowed}
+    .card .name{font-weight:1000;font-size:15px;margin-bottom:4px}
+    .card .meta{font-size:13px;opacity:.9;display:flex;gap:10px;flex-wrap:wrap}
+
+    .hint{font-size:13px;opacity:.85;max-width:460px;line-height:1.45}
+    .kbd{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;background:#0f1630;border:1px solid #27315d;padding:1px 6px;border-radius:6px}
+
+    /* modal */
+    .modalBack{position:fixed;inset:0;background:rgba(0,0,0,.62);display:none;align-items:center;justify-content:center;z-index:999;padding:18px}
+    .modalBack.show{display:flex}
+    .modalPanel{width:min(900px,96vw);border-radius:16px;border:2px solid rgba(255,255,255,.18);background:linear-gradient(180deg,rgba(255,255,255,.10) 0%,rgba(255,255,255,.05) 100%),rgba(12,18,40,.92);box-shadow:0 18px 50px rgba(0,0,0,.55);padding:16px 16px 14px;overflow:hidden}
+    .btn{border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.06);color:var(--ink);border-radius:12px;padding:10px 14px;font-weight:1000;cursor:pointer}
+    .btn:disabled{opacity:.45;cursor:not-allowed}
+    .btn.primary{background:rgba(140,255,170,.12);border-color:rgba(140,255,170,.35)}
+    .btn.danger{background:rgba(255,123,123,.10);border-color:rgba(255,123,123,.30)}
+
+    /* title */
+    .titlePanel{text-align:center;padding:20px 18px 18px;width:min(860px,96vw)}
+    .badge{display:inline-flex;align-items:center;gap:8px;padding:6px 10px;border-radius:999px;border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.06);font-weight:1000;font-size:13px;opacity:.95}
+    .gameTitle{font-weight:1000;font-size:clamp(34px,4.2vw,54px);letter-spacing:.6px;margin-top:8px}
+    .subTitle{margin-top:10px;opacity:.85;font-size:14px;line-height:1.5}
+    .titleActions{margin-top:18px;display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+
+    /* start menu */
+    .menuGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:12px}
+    @media (max-width:720px){.menuGrid{grid-template-columns:1fr}}
+    .menuCard{border-radius:14px;border:1px solid rgba(255,255,255,.16);background:rgba(255,255,255,.05);padding:14px;text-align:left;cursor:pointer}
+    .menuCard h3{margin:0;font-size:18px;font-weight:1000}
+    .menuCard p{margin:6px 0 0;opacity:.8;font-size:13px;line-height:1.45}
+
+    /* stage select */
+    .stageHeader{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+    .stageHeader h2{margin:0;font-size:22px;font-weight:1000}
+    .stageHeader p{margin:6px 0 0;opacity:.82;font-size:13px;line-height:1.5}
+    .stageLayout{display:grid;grid-template-columns:.9fr 1.1fr;gap:12px}
+    @media (max-width:840px){.stageLayout{grid-template-columns:1fr}}
+    .box{border-radius:14px;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.04);padding:12px}
+    .box h3{margin:0 0 10px 0;font-size:14px;font-weight:1000;opacity:.95}
+    .mainGrid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+    .subGrid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:10px}
+    .stageBtn{border-radius:12px;border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.06);padding:10px 10px;cursor:pointer;text-align:left;display:flex;flex-direction:column;gap:6px;min-height:74px}
+    .stageBtn.active{background:rgba(105,210,255,.12);border-color:rgba(105,210,255,.40)}
+    .stageBtn .t{font-weight:1000;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+    .stageBtn .d{font-size:12px;opacity:.82;line-height:1.35}
+    .subBtn{border-radius:12px;border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.06);padding:10px 10px;cursor:pointer;text-align:center;display:flex;flex-direction:column;gap:4px;min-height:74px}
+    .subBtn.midboss{background:rgba(255,220,110,.10);border-color:rgba(255,220,110,.30)}
+
+    .actions{margin-top:12px;display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap}
+
+    /* end */
+    .endPanel{width:min(860px,96vw)}
+    .endTop{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:10px}
+    .stageBadge2{background:rgba(255,255,255,.10);border:1px solid rgba(255,255,255,.18);border-radius:12px;padding:8px 12px;display:flex;align-items:baseline;gap:10px}
+    .stageBadge2 .code{font-weight:1000;font-size:28px;letter-spacing:1px}
+    .stageBadge2 .lv{opacity:.85;font-size:13px}
+    .endTitle{font-weight:1000;font-size:34px;letter-spacing:.6px;display:flex;align-items:center;gap:10px}
+    .endTitle.lose{color:rgba(255,123,123,.95)}
+    .stars{display:flex;gap:10px;align-items:center}
+    .star{width:34px;height:34px;border-radius:10px;display:grid;place-items:center;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.14);font-size:20px}
+    .star.on{background:rgba(255,220,110,.18);border-color:rgba(255,220,110,.45);filter:brightness(1.25)}
+
+    .endBody{display:grid;grid-template-columns:1.2fr .8fr;gap:12px}
+    @media (max-width:760px){.endBody{grid-template-columns:1fr}}
+    .summary{border-radius:14px;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.05);padding:12px}
+    .row{display:flex;justify-content:space-between;gap:12px;padding:6px 0;border-bottom:1px dashed rgba(255,255,255,.12)}
+    .row:last-child{border-bottom:none}
+    .row .k{opacity:.85}
+    .row .v{font-weight:1000}
+    .bonusLine{margin-top:10px;border-radius:12px;border:1px solid rgba(255,255,255,.14);background:rgba(0,0,0,.18);padding:10px 12px;display:flex;justify-content:space-between;align-items:center;gap:12px;font-weight:1000}
+    .pill{font-size:12px;font-weight:900;padding:2px 8px;border-radius:999px;background:rgba(255,255,255,.10);border:1px solid rgba(255,255,255,.16);opacity:.95}
+
+    .mapBox{border-radius:14px;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.04);padding:12px}
+    .mapTitle{font-weight:900;margin-bottom:10px;opacity:.95;display:flex;justify-content:space-between;gap:10px}
+    .mapTitle small{opacity:.75;font-weight:700}
+    .stageMap{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+    .node{width:36px;height:36px;border-radius:12px;display:grid;place-items:center;border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.06);font-weight:1000;user-select:none}
+    .node.mid{background:rgba(255,220,110,.10);border-color:rgba(255,220,110,.30)}
+    .conn{width:34px;height:2px;background:rgba(255,255,255,.18);border-radius:999px;opacity:.8}
+
+    /* overlay */
+    .overlay{position:absolute;inset:0;display:flex;align-items:flex-start;justify-content:center;pointer-events:none}
+    .overlay .msg{margin-top:70px;padding:10px 14px;border-radius:12px;border:1px solid rgba(255,255,255,.16);background:rgba(0,0,0,.25);backdrop-filter:blur(8px);font-weight:1000;opacity:0;transform:translateY(-4px);transition:opacity .12s ease, transform .12s ease}
+    .overlay .msg.show{opacity:1;transform:translateY(0)}
+
+    /* loadout */
+    .loadoutTop{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:10px}
+    .tabs{display:flex;gap:8px;flex-wrap:wrap}
+    .tab{border-radius:999px;border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.06);padding:6px 10px;font-weight:1000;cursor:pointer}
+    .tab.active{background:rgba(105,210,255,.12);border-color:rgba(105,210,255,.40)}
+    .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    @media (max-width:860px){.grid2{grid-template-columns:1fr}}
+    .slotRow{display:flex;gap:10px;flex-wrap:wrap}
+    .slot{min-width:180px;border-radius:12px;border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.06);padding:10px 10px;cursor:pointer;display:flex;align-items:center;gap:10px}
+    .slot b{font-weight:1000}
+
+    .invScroll{max-height:320px;overflow-y:auto;overflow-x:hidden;padding-right:6px}
+
+    .sel{appearance:none;-webkit-appearance:none;-moz-appearance:none;background:rgba(255,255,255,.06);color:var(--ink);border:1px solid rgba(255,255,255,.18);border-radius:10px;padding:6px 10px;font-weight:900;outline:none}
+    .inv{display:flex;gap:10px;flex-wrap:wrap;align-content:flex-start}
+    .invItem{min-width:220px;border-radius:12px;border:1px solid rgba(255,255,255,.14);background:rgba(0,0,0,.14);padding:10px 10px;cursor:pointer;display:flex;align-items:center;gap:10px}
+
+    .small{opacity:.78;font-size:12px;line-height:1.4}
+
+    .gradeTag{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:1000;padding:2px 8px;border-radius:999px;border:1px solid rgba(255,255,255,.18);background:rgba(0,0,0,.22)}
+    .itemName{font-weight:1000}
+
+    .g-common{color:var(--c-common)}
+    .g-rare{color:var(--c-rare)}
+    .g-unique{color:var(--c-unique)}
+    .g-myth{color:var(--c-myth)}
+    .g-limited{color:var(--c-limited)}
+    .g-premium{color:var(--c-premium)}
+    .g-relic{color:var(--c-relic)}
+
+    .itemName.g-relic,.itemName.g-limited,.itemName.g-premium,.itemName.g-myth{ text-shadow:0 0 10px currentColor; }
+
+    .miniSvg{width:56px;height:28px;border-radius:10px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12)}
+    .miniSvg polyline{fill:none;stroke:rgba(255,255,255,.85);stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+
+    .dbg{margin-top:10px;font-size:12px;opacity:.75;white-space:pre-wrap}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="hud">
+      <div class="left">
+        <div class="chip">🎮 스테이지 <b id="stageHud">-</b></div>
+        <div class="chip">🧩 기믹 <b id="gimmickHud">-</b></div>
+        <div class="chip">⏱️ 남은 시간 <b id="time">120.0</b>s</div>
+        <div class="chip">⏳ 플레이 <b id="play">0.0</b>s</div>
+        <div class="chip">🔷 마나 <b id="mana">0</b> / <span id="manaMax">100</span></div>
+        <div class="chip" id="fxChip">💱 환율 <b id="fx">1000</b> <span>(배수 <b id="fxMul">1.00</b>x)</span> <span style="opacity:.85">|</span> 예고 <b id="fxNext">-</b> <small>(<span id="fxCd">3.0</span>s)</small></div>
+        <div class="chip">📛 보스 <b id="bossName">-</b></div>
+        <div class="chip">⚠️ 현재 패턴 <b id="patternText">-</b></div>
+        <div class="chip">⏳ 다음 패턴 <b id="nextPatternText">-</b></div>
+        <div class="chip warn" id="doomChip" style="display:none;">💀 강제청산까지 <b id="doomText">-</b>s</div>
+      </div>
+      <div class="right">
+        <div class="chip">🧾 점수 <b id="score">0</b></div>
+        <div class="chip">🪙 재화 <b id="coins">0</b></div>
+        <div class="chip">🏰 아군 본진 HP <b id="baseP">3000</b></div>
+        <div class="chip">🧱 적 본진 HP <b id="baseE">3000</b></div>
+        <button class="btn" id="openStageBtn" type="button">스테이지</button>
+        <button class="btn" id="openLoadoutBtn" type="button">장비/토템</button>
+      </div>
+    </div>
+
+    <div class="progressWrap">
+      <div class="progressLine">
+        <div style="font-size:16px;">🥬</div>
+        <div class="barOuter"><div class="barInner" id="progressBar"></div></div>
+        <div style="font-size:16px;">🍔</div>
+      </div>
+      <div style="opacity:.85;font-size:13px;">진척도 <b id="progressPct">0</b>%</div>
+    </div>
+
+    <div style="position:relative">
+      <canvas id="game" width="1100" height="520"></canvas>
+      <div class="overlay"><div class="msg" id="overlayMsg">-</div></div>
+    </div>
+
+    <div class="bar">
+      <div class="cards" id="cards"></div>
+      <div class="hint">
+        1레인 2D · 소환 위치는 <b>본진 앞 고정</b><br/>
+        단축키: <span class="kbd">1</span> <span class="kbd">2</span> <span class="kbd">3</span> 소환
+        <div style="margin-top:8px;">
+          <b>규칙</b><br/>
+          • 카드 UI에는 <b>성능(스탯) 미표기</b><br/>
+          • 패턴 발동 <b>2초 전</b>부터 진동(화면 흔들림)
+        </div>
+      </div>
+    </div>
+
+    <div class="dbg" id="dbg"></div>
+  </div>
+
+  <!-- Title -->
+  <div class="modalBack" id="titleModal" aria-hidden="true">
+    <div class="modalPanel titlePanel" role="dialog" aria-modal="true">
+      <div class="badge">🐜 마나 워 · 개미의 반란</div>
+      <div class="gameTitle">MANA WAR</div>
+      <div class="subTitle">
+        HTML 프로토타입 · "냥켓 대전쟁/팔라독" 스타일 1레인
+        <br/><span style="opacity:.78">(환율 3초 전 예고 · 강제청산 패턴 포함)</span>
+      </div>
+      <div class="titleActions">
+        <button class="btn primary" id="startBtn" type="button">START</button>
+        <button class="btn" id="howBtn" type="button">HOW TO</button>
+      </div>
+      <div style="margin-top:12px;opacity:.78;font-size:12px;line-height:1.55;">
+        * 진행도/장착/등급은 브라우저에 저장됩니다(LocalStorage).
+      </div>
+    </div>
+  </div>
+
+  <!-- How To -->
+  <div class="modalBack" id="howModal" aria-hidden="true">
+    <div class="modalPanel titlePanel" role="dialog" aria-modal="true">
+      <div class="badge">📖 HOW TO PLAY</div>
+      <div class="subTitle" style="text-align:left;max-width:720px;margin:14px auto 0;">
+        • START → 스테이지 선택 또는 장비/토템
+        <br/>• 전투 중: <span class="kbd">1</span> / <span class="kbd">2</span> / <span class="kbd">3</span> 소환
+        <br/>• 강제청산(튜토리얼): 게임 시작 <b>105초</b>에 <b>본진/마나 0</b> → 즉시 패배
+        <br/>• 환율: 변경 <b>3초 전</b> 예고 UI 표시
+        <br/>• 패턴: 발동 <b>2초 전</b>부터 화면 진동
+        <br/>• 카드 UI에는 <b>스탯 미표기</b>(비용만)
+        <br/>• 장비/토템: 1연/10연 뽑기, 중복은 <b>x수량</b>으로 누적, 정렬 변경 가능
+      </div>
+      <div class="titleActions" style="margin-top:16px;">
+        <button class="btn primary" id="howCloseBtn" type="button">닫기</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Start Menu -->
+  <div class="modalBack" id="startMenuModal" aria-hidden="true">
+    <div class="modalPanel titlePanel" role="dialog" aria-modal="true">
+      <div class="badge">🏁 시작 메뉴</div>
+      <div class="subTitle">게임을 시작하기 전에 스테이지를 고르거나, 장비/토템을 뽑아 장착할 수 있어요.</div>
+      <div class="menuGrid">
+        <button class="menuCard" id="goStageSelectBtn" type="button">
+          <h3>🎮 스테이지 선택</h3>
+          <p>1~7 스테이지 · 각 스테이지 세부 1~7<br/>세부 4는 중간보스</p>
+        </button>
+        <button class="menuCard" id="goLoadoutBtn" type="button">
+          <h3>🧿 장비/토템</h3>
+          <p>장비 3개 · 토템 3개 장착 가능<br/>뽑기(1연/10연) → 인벤 → 장착</p>
+        </button>
+      </div>
+      <div class="titleActions" style="margin-top:14px;">
+        <button class="btn" id="startMenuBackBtn" type="button">타이틀</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Stage Select -->
+  <div class="modalBack" id="stageModal" aria-hidden="true">
+    <div class="modalPanel" role="dialog" aria-modal="true">
+      <div class="stageHeader">
+        <div>
+          <h2>스테이지 선택</h2>
+          <p>
+            (프로토타입) 현재는 모든 스테이지 선택 가능.
+            <br/>세부 <b>4</b>는 <b>중간보스</b>.
+          </p>
+        </div>
+        <div style="display:flex;gap:10px;align-items:flex-start;flex-wrap:wrap;justify-content:flex-end;">
+          <button class="btn" id="resetProgressBtn" type="button">진행도 초기화</button>
+          <button class="btn" id="backToTitleBtn" type="button">타이틀</button>
+        </div>
+      </div>
+
+      <div class="stageLayout">
+        <div class="box">
+          <h3>메인 스테이지 (1~7)</h3>
+          <div class="mainGrid" id="mainStageGrid"></div>
+        </div>
+
+        <div class="box">
+          <h3>세부 스테이지 (선택된 메인: <span id="selectedMain">-</span>)</h3>
+          <div class="subGrid" id="subStageGrid"></div>
+          <div class="actions">
+            <button class="btn" id="closeStageBtn" type="button">닫기</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Loadout -->
+  <div class="modalBack" id="loadoutModal" aria-hidden="true">
+    <div class="modalPanel" role="dialog" aria-modal="true">
+      <div class="loadoutTop">
+        <div>
+          <h2 style="margin:0;font-size:22px;font-weight:1000;">장비 / 토템</h2>
+          <div class="small" style="margin-top:6px;">
+            • 장비 3개 / 토템 3개 장착 가능<br/>
+            • 인벤 아이템 클릭 → 빈 슬롯에 자동 장착<br/>
+            • 슬롯 클릭 → 해제(인벤으로 복귀)
+          </div>
+        </div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end;align-items:flex-start;">
+          <div class="chip">장착 <b id="equipCount">장비 0/3 · 토템 0/3</b></div>
+          <button class="btn" id="loadoutCloseBtn" type="button">닫기</button>
+        </div>
+      </div>
+
+      <div class="tabs">
+        <button class="tab active" id="tabEquip" type="button">장비</button>
+        <button class="tab" id="tabTotem" type="button">토템</button>
+      </div>
+
+      <div class="grid2" style="margin-top:10px;">
+        <div class="box">
+          <h3>장착 슬롯</h3>
+          <div class="slotRow" id="slotRow"></div>
+          <div class="actions">
+            <button class="btn primary" id="draw1Btn" type="button">1연 뽑기</button>
+            <button class="btn primary" id="draw10Btn" type="button">10연 뽑기</button>
+            <button class="btn" id="clearInvBtn" type="button">인벤 비우기</button>
+          </div>
+          <div style="margin-top:10px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+            <div class="chip" style="gap:8px;">정렬
+              <select id="sortSelect" class="sel" aria-label="inventory sort">
+                <option value="grade">등급순(높은→낮은)</option>
+                <option value="qty_desc">수량순(많은→적은)</option>
+                <option value="qty_asc">수량순(적은→많은)</option>
+              </select>
+            </div>
+            <div class="small">* 등급순: 높은 등급이 위 · 수량순: 많은/적은 순 선택 가능</div>
+          </div>
+          <div class="small" style="margin-top:10px;">
+            * 같은 이름(같은 ID)의 아이템은 등급이 1개로 고정됩니다.
+            <br/>* 토템은 "차트 패턴" 아이콘으로 표시됩니다.
+          </div>
+        </div>
+        <div class="box">
+          <h3>인벤토리</h3>
+          <div class="invScroll"><div class="inv" id="invWrap"></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- End -->
+  <div class="modalBack" id="endModal" aria-hidden="true">
+    <div class="modalPanel endPanel" role="dialog" aria-modal="true">
+      <div class="endTop">
+        <div class="stageBadge2"><div class="code" id="endStage">1-01</div><div class="lv">STAGE</div></div>
+        <div class="endTitle" id="endTitle">CLEARED</div>
+        <div class="stars" aria-label="burgers">
+          <div class="star" id="star1">🍔</div>
+          <div class="star" id="star2">🍔</div>
+          <div class="star" id="star3">🍔</div>
+        </div>
+      </div>
+
+      <div class="endBody">
+        <div>
+          <div class="summary">
+            <div class="row"><div class="k">점수</div><div class="v" id="endScore">0</div></div>
+            <div class="row"><div class="k">재화</div><div class="v" id="endCoins">0</div></div>
+            <div class="row"><div class="k">플레이 시간</div><div class="v"><span id="endTime">0.0</span>s</div></div>
+            <div class="row"><div class="k">진척도 (🥬→🍔)</div><div class="v"><span id="endProgress">0</span>%</div></div>
+            <div class="row"><div class="k">처치</div><div class="v" id="endKills">0</div></div>
+            <div class="row"><div class="k">적 본진 피해 누적</div><div class="v" id="endDmg">0</div></div>
+          </div>
+          <div class="bonusLine">
+            <div>🏆 PROGRESS BONUS <span class="pill" id="bonusWhy">기본</span></div>
+            <div>🪙 <span id="endBonus">0</span></div>
+          </div>
+        </div>
+
+        <div>
+          <div class="mapBox">
+            <div class="mapTitle"><div>🗺️ 스테이지 진척도</div><small><span id="campaignPct">0</span>%</small></div>
+            <div class="stageMap" id="stageMap"></div>
+            <div style="margin-top:12px;display:flex;gap:10px;align-items:center;">
+              <div style="font-size:16px;">🥬</div>
+              <div class="barOuter"><div class="barInner" id="campaignBar"></div></div>
+              <div style="font-size:16px;">🍔</div>
+            </div>
+            <div style="opacity:.78;font-size:12px;margin-top:10px;line-height:1.4;">
+              * 햄버거 점등: <b>30%</b> / <b>60%</b> / <b>90%</b>
+              <br/>* 단축키: <span class="kbd">R</span> 재시작 / <span class="kbd">N</span> 다음
+            </div>
+          </div>
+          <div class="actions">
+            <button class="btn danger" id="retryBtn" type="button">RETRY</button>
+            <button class="btn primary" id="nextBtn" type="button">NEXT</button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+<script>
+(() => {
+  // =========================
+  // Helpers
+  // =========================
+  const el = (id)=>document.getElementById(id);
+  const clamp = (v,min,max)=>Math.max(min,Math.min(max,v));
+  const fmt1 = (n)=>Number(n).toFixed(1);
+  const escapeHtml = (s)=>String(s)
+    .replace(/&/g,"&amp;")
+    .replace(/</g,"&lt;")
+    .replace(/>/g,"&gt;")
+    .replace(/\"/g,"&quot;")
+    .replace(/'/g,"&#039;");
+
+  function showModal(m){ m.classList.add("show"); m.setAttribute("aria-hidden","false"); }
+  function hideModal(m){ m.classList.remove("show"); m.setAttribute("aria-hidden","true"); }
+
+  // =========================
+  // Config
+  // =========================
+  const CFG = {
+    durationSec: 120,
+    doomAtSec: 105,
+
+    manaMax: 100,
+    manaRegenPerSec: 10,
+
+    fxChangeEverySec: 12,
+    fxAnnounceSec: 3,
+
+    vibrateLeadSec: 2,
+
+    playerSpawnX: 140,
+    enemySpawnX: 960,
+    laneY: 335,
+
+    baseP: { x: 80,  hp: 3000, maxHp: 3000, w: 90, h: 170 },
+    baseE: { x: 1020, hp: 3000, maxHp: 3000, w: 90, h: 170 },
+
+    enemySpawnEvery: 2.2,
+  };
+
+  const MAIN_STAGE_COUNT = 7;
+  const SUB_STAGE_COUNT = 7;
+  const MIDBOSS_SUB_INDEX = 4;
+
+  // =========================
+  // Grades
+  // =========================
+  const GRADE_META = {
+    relic:   { label:"태초",     rank:7 },
+    limited: { label:"리미티드", rank:6 },
+    premium: { label:"프리미엄", rank:5 },
+    myth:    { label:"신화",     rank:4 },
+    unique:  { label:"유니크",   rank:3 },
+    rare:    { label:"레어",     rank:2 },
+    common:  { label:"커먼",     rank:1 },
+  };
+
+  function gradeLabel(key){ return (GRADE_META[key]||GRADE_META.common).label; }
+  function gradeRank(key){ return (GRADE_META[key]||GRADE_META.common).rank; }
+  function gradeCssClass(key){ return "g-" + (key || "common"); }
+
+  // 장비/토템 각각의 뽑기 테이블(고정 보장 없음)
+  const EQUIP_GACHA = [
+    { key:"relic", w:2 },
+    { key:"limited", w:4 },
+    { key:"myth", w:10 },
+    { key:"unique", w:16 },
+    { key:"rare", w:24 },
+    { key:"common", w:44 },
+  ];
+
+  const TOTEM_GACHA = [
+    { key:"limited", w:1 },
+    { key:"premium", w:3 },
+    { key:"myth", w:10 },
+    { key:"unique", w:16 },
+    { key:"rare", w:24 },
+    { key:"common", w:46 },
+  ];
+
+  function rollFromTable(tbl, r){
+    const rr = (typeof r === "number") ? r : Math.random();
+    const sum = tbl.reduce((a,b)=>a+(b.w||0),0) || 1;
+    let roll = rr * sum;
+    for(const t of tbl){
+      roll -= (t.w||0);
+      if(roll <= 0) return t.key;
+    }
+    return tbl[tbl.length-1].key;
+  }
+
+  // =========================
+  // Totem icons (차트 패턴)
+  // =========================
+  const CHART_PATTERNS = [
+    { id:"ASC_TRI",  name:"상승삼각형",    pts:[[4,22],[16,10],[16,22],[30,14],[30,22],[46,16],[46,22],[56,12]] },
+    { id:"ASC_FLAG", name:"상승플래그",    pts:[[4,22],[14,10],[14,16],[28,14],[28,20],[46,12],[56,16]] },
+    { id:"ASC_PEN",  name:"상승페넌트",    pts:[[4,22],[14,12],[24,18],[34,12],[44,16],[56,10]] },
+    { id:"CUP",      name:"컵앤핸들",      pts:[[4,12],[14,18],[24,22],[34,18],[44,12],[50,14],[56,10]] },
+    { id:"SYM_TRI",  name:"삼각수렴",      pts:[[4,18],[16,10],[26,18],[36,12],[48,18],[56,14]] },
+
+    { id:"DBL_BOT",  name:"쌍바닥",        pts:[[4,10],[16,22],[28,10],[40,22],[52,10],[56,10]] },
+    { id:"TRP_BOT",  name:"3중바닥",       pts:[[4,10],[14,22],[24,10],[34,22],[44,10],[54,22],[56,10]] },
+    { id:"FALL_W",   name:"하락쐐기",      pts:[[4,10],[18,22],[30,14],[44,22],[56,16]] },
+    { id:"INV_HS",   name:"역헤드앤숄더",  pts:[[4,16],[14,22],[24,14],[34,24],[44,14],[56,16]] },
+    { id:"RND_BOT",  name:"라운드바텀",    pts:[[4,10],[14,18],[24,22],[34,22],[44,18],[54,10]] },
+
+    { id:"DESC_TRI", name:"하락삼각형",    pts:[[4,10],[16,18],[16,10],[30,14],[30,10],[46,12],[46,10],[56,10]] },
+    { id:"DESC_FLAG",name:"하락플래그",    pts:[[4,10],[14,22],[14,18],[28,20],[28,14],[46,22],[56,18]] },
+    { id:"DESC_PEN", name:"하락페넌트",    pts:[[4,10],[14,20],[24,14],[34,20],[44,16],[56,22]] },
+    { id:"RISE_W",   name:"상승쐐기",      pts:[[4,22],[18,10],[30,18],[44,10],[56,16]] },
+
+    { id:"BROAD_TOP",name:"브로드닝탑",    pts:[[4,18],[14,10],[24,22],[34,8],[44,24],[56,12]] },
+    { id:"DBL_TOP",  name:"더블탑",        pts:[[4,22],[16,10],[28,22],[40,10],[52,22],[56,22]] },
+    { id:"TRP_TOP",  name:"트리플탑",      pts:[[4,22],[14,10],[24,22],[34,10],[44,22],[54,10],[56,22]] },
+    { id:"HS",       name:"헤드앤숄더",    pts:[[4,22],[14,12],[24,18],[34,8],[44,18],[56,12]] },
+    { id:"RND_TOP",  name:"라운드탑",      pts:[[4,22],[14,14],[24,10],[34,10],[44,14],[54,22]] },
+    { id:"DIAMOND",  name:"다이아몬드탑",  pts:[[4,18],[18,10],[32,18],[46,10],[56,18]] },
+  ];
+
+  function svgForPattern(pid){
+    const p = CHART_PATTERNS.find(x=>x.id===pid);
+    if(!p) return "";
+    const pts = p.pts.map(([x,y])=>x+","+y).join(" ");
+    return '<svg class="miniSvg" viewBox="0 0 60 28" aria-label="'+escapeHtml(p.name)+'">'
+      + '<polyline points="'+pts+'"></polyline>'
+      + '</svg>';
+  }
+
+  // =========================
+  // Equipment pools (태초/리미티드 이름은 유저 지정)
+  // =========================
+  const EQUIP_BY_GRADE = {
+    relic: [
+      { id:"E_NEWTON",  name:"뉴턴의 깨달음" },
+      { id:"E_TURING",  name:"앨런 튜링의 알고리즘" },
+      { id:"E_EINSTEIN",name:"아인슈타인의 실수" },
+    ],
+    limited: [
+      { id:"E_BUFFETT", name:"워렌 버핏의 장부" },
+      { id:"E_MUSK",    name:"일론 머스크의 상상" },
+      { id:"E_JENSEN",  name:"젠슨 황의 가속기" },
+      { id:"E_FED",     name:"연준의장의 원칙" },
+    ],
+    myth: [
+      { id:"E_VOL_CORE", name:"변동성 흡수 코어" },
+      { id:"E_MKT_CAP",  name:"시가총액 부스터" },
+    ],
+    unique: [
+      { id:"E_LEV_GLOVE", name:"레버리지 글러브" },
+      { id:"E_MARGIN",    name:"마진 방패" },
+    ],
+    rare: [
+      { id:"E_STOP_RING", name:"손절의 반지" },
+      { id:"E_TAKE_NECK", name:"익절의 목걸이" },
+    ],
+    common: [
+      { id:"E_TAX_BADGE", name:"금리 차익 배지" },
+      { id:"E_PROTECT",   name:"청산 방지 부적" },
+      { id:"E_REBAL",     name:"리밸런스 키트" },
+    ],
+  };
+
+  // =========================
+  // Totem pools
+  //   - 리미티드/프리미엄 토템도 sheet에 있는 "차트 패턴" 이름 사용
+  // =========================
+  const TOTEM_SPECIAL = {
+    common: [
+      { id:"T_LONG_BULL",     name:"장대양봉",    patternId:"ASC_TRI" },
+      { id:"T_GOLDEN_CROSS",  name:"골든크로스",  patternId:"RND_BOT" },
+      { id:"T_RSI_OVERSOLD",  name:"RSI 과매도",  patternId:"INV_HS" },
+    ],
+    premium: [
+      { id:"T_DEADCAT", name:"데드캣 바운스", patternId:"DBL_BOT" },
+      { id:"T_MACD",    name:"MACD",         patternId:"SYM_TRI" },
+    ],
+    limited: [
+      { id:"T_BLACK_SWAN",  name:"블랙 스완",  patternId:"DIAMOND" },
+      { id:"T_SANTA_RALLY", name:"산타 랠리",  patternId:"ASC_FLAG" },
+    ],
+  };
+
+  function buildChartTotems(){
+    // 남은 차트 패턴을 레어/유니크/신화에 분배
+    // (중요) 등급이 뽑기 테이블에 존재하면, 해당 등급 풀은 "최소 1개"는 있어야 함.
+    const all = CHART_PATTERNS.map(p => ({ id:"T_PAT_"+p.id, name:p.name, patternId:p.id }));
+
+    // 특수 토템에서 사용한 patternId는 제거(중복 방지)
+    const used = new Set([
+      ...Object.values(TOTEM_SPECIAL).flat().map(x=>x.patternId)
+    ]);
+
+    const remain = all.filter(x => !used.has(x.patternId));
+
+    // remain이 13개인 경우(현재 데이터) 기존 slice(13)로 myth가 0개가 되어 오류가 났었음.
+    // → rare 6 / unique 6 / myth 나머지(최소 1) 로 강제.
+    const rareCount = Math.min(6, remain.length);
+    const uniqueCount = Math.min(6, Math.max(0, remain.length - rareCount));
+
+    const rare = remain.slice(0, rareCount);
+    const unique = remain.slice(rareCount, rareCount + uniqueCount);
+    const myth = remain.slice(rareCount + uniqueCount);
+
+    // 안전망: myth가 비면 unique/rare에서 1개 가져오기
+    if(myth.length === 0){
+      if(unique.length > 0) myth.push(unique.pop());
+      else if(rare.length > 0) myth.push(rare.pop());
+    }
+
+    return { rare, unique, myth };
+  }
+
+  const CHART_TOTEMS = buildChartTotems();
+
+  const TOTEM_BY_GRADE = {
+    common: TOTEM_SPECIAL.common,
+    rare: CHART_TOTEMS.rare,
+    unique: CHART_TOTEMS.unique,
+    myth: CHART_TOTEMS.myth,
+    premium: TOTEM_SPECIAL.premium,
+    limited: TOTEM_SPECIAL.limited,
+  };
+
+  function poolFor(tab, gradeKey){
+    if(tab === "equip"){
+      return EQUIP_BY_GRADE[gradeKey] || EQUIP_BY_GRADE.common;
+    }
+    return TOTEM_BY_GRADE[gradeKey] || TOTEM_BY_GRADE.common;
+  }
+
+  function gachaTableFor(tab){
+    return (tab === "equip") ? EQUIP_GACHA : TOTEM_GACHA;
+  }
+
+  // =========================
+  // Safe pick (prevents undefined.id)
+  // =========================
+  function pickRandomItem(tab, gradeKey){
+    // 1) 요청 등급 풀
+    const tryGrades = [gradeKey, "common", "rare", "unique", "myth", "premium", "limited", "relic"]; // fallback chain
+
+    for(const g of tryGrades){
+      const pool = poolFor(tab, g);
+      if(Array.isArray(pool) && pool.length>0){
+        const pick = pool[Math.floor(Math.random()*pool.length)];
+        if(pick && pick.id) return { ...pick, grade: g, patternId: pick.patternId || null };
+      }
+    }
+
+    // 2) 최후의 안전망: 전체에서 하나
+    const all = (tab === "equip")
+      ? Object.values(EQUIP_BY_GRADE).flat()
+      : Object.values(TOTEM_BY_GRADE).flat();
+
+    const p = all.find(x=>x && x.id);
+    if(p) return { ...p, grade:"common", patternId: p.patternId || null };
+
+    return null;
+  }
+
+  // =========================
+  // Persistence
+  // =========================
+  // 버전 업: 구조 변경으로 구버전 데이터 충돌 방지
+  const STORAGE_KEY = "mana-war-progress-v4";
+  const LOADOUT_KEY = "mana-war-loadout-v4";
+
+  const stageProgress = new Map();
+
+  const loadoutState = {
+    tab: "equip", // 'equip' | 'totem'
+    sortMode: { equip: "grade", totem: "grade" },
+
+    equip: { equip: [null,null,null], totem: [null,null,null] },
+    inv: { equip: [], totem: [] }, // stacks: {id,name,grade,patternId,qty}
+  };
+
+  function loadProgress(){
+    try{
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if(!raw) return;
+      const obj = JSON.parse(raw);
+      if(!obj || typeof obj!=="object") return;
+      for(const k in obj) stageProgress.set(k, Number(obj[k])||0);
+    }catch(_e){}
+  }
+  function saveProgress(){
+    try{
+      const obj = {};
+      for(const [k,v] of stageProgress.entries()) obj[k]=v;
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(obj));
+    }catch(_e){}
+  }
+  function getBestProgress(code){ return stageProgress.get(code) || 0; }
+  function recordProgress(code, pct){
+    const prev = getBestProgress(code);
+    const next = Math.max(prev, pct);
+    stageProgress.set(code, next);
+    saveProgress();
+  }
+
+  function loadLoadout(){
+    try{
+      const raw = localStorage.getItem(LOADOUT_KEY);
+      if(!raw) return;
+      const obj = JSON.parse(raw);
+      if(!obj || typeof obj!=="object") return;
+
+      if(obj.tab) loadoutState.tab = obj.tab;
+      if(obj.sortMode && typeof obj.sortMode === "object"){
+        if(obj.sortMode.equip) loadoutState.sortMode.equip = obj.sortMode.equip;
+        if(obj.sortMode.totem) loadoutState.sortMode.totem = obj.sortMode.totem;
+      }
+
+      if(obj.equip && obj.equip.equip && obj.equip.totem){
+        loadoutState.equip.equip = obj.equip.equip;
+        loadoutState.equip.totem = obj.equip.totem;
+      }
+      if(obj.inv && obj.inv.equip && obj.inv.totem){
+        loadoutState.inv.equip = obj.inv.equip;
+        loadoutState.inv.totem = obj.inv.totem;
+      }
+
+      normalizeInventory("equip");
+      normalizeInventory("totem");
+      saveLoadout();
+    }catch(_e){}
+  }
+  function saveLoadout(){
+    try{ localStorage.setItem(LOADOUT_KEY, JSON.stringify(loadoutState)); }catch(_e){}
+  }
+
+  // =========================
+  // Inventory helpers
+  // =========================
+  function getSortMode(tab){
+    const t = tab || loadoutState.tab;
+    const m = loadoutState.sortMode && loadoutState.sortMode[t];
+    if(m === "qty_desc" || m === "qty_asc" || m === "grade") return m;
+    return "grade";
+  }
+
+  function setSortMode(tab, mode){
+    const t = tab || loadoutState.tab;
+    if(!loadoutState.sortMode) loadoutState.sortMode = { equip:"grade", totem:"grade" };
+    const m = (mode === "qty_desc" || mode === "qty_asc" || mode === "grade") ? mode : "grade";
+    loadoutState.sortMode[t] = m;
+    saveLoadout();
+  }
+
+  function normalizeInventory(tab){
+    const inv = loadoutState.inv[tab];
+    if(!Array.isArray(inv) || inv.length===0) return;
+
+    const byId = new Map();
+    for(const it of inv){
+      if(!it || !it.id) continue;
+      const key = String(it.id);
+      const qty = Math.max(1, Number(it.qty)||1);
+      const g = String(it.grade||"common");
+
+      if(!byId.has(key)){
+        byId.set(key, { id: it.id, name: it.name, grade: g, patternId: it.patternId||null, qty });
+      }else{
+        const cur = byId.get(key);
+        cur.qty += qty;
+      }
+    }
+    loadoutState.inv[tab] = Array.from(byId.values());
+  }
+
+  function addToInventoryStack(tab, item){
+    if(!item || !item.id) return;
+    normalizeInventory(tab);
+    const inv = loadoutState.inv[tab];
+    const key = String(item.id);
+
+    const found = inv.find(x=>String(x.id)===key);
+    if(found){
+      found.qty = Math.max(1, Number(found.qty)||1) + 1;
+    }else{
+      inv.push({ id:item.id, name:item.name, grade:item.grade||"common", patternId:item.patternId||null, qty:1 });
+    }
+  }
+
+  function sortInventory(tab){
+    normalizeInventory(tab);
+    const inv = loadoutState.inv[tab];
+    if(!Array.isArray(inv) || inv.length<=1) return;
+
+    const mode = getSortMode(tab);
+
+    inv.sort((a,b)=>{
+      const qa = Math.max(1, Number(a?.qty)||1);
+      const qb = Math.max(1, Number(b?.qty)||1);
+      const ra = gradeRank(a?.grade);
+      const rb = gradeRank(b?.grade);
+
+      if(mode === "qty_asc"){
+        if(qa !== qb) return qa - qb;
+        if(rb !== ra) return rb - ra;
+      }else if(mode === "qty_desc"){
+        if(qa !== qb) return qb - qa;
+        if(rb !== ra) return rb - ra;
+      }else{
+        if(rb !== ra) return rb - ra;
+        if(qa !== qb) return qb - qa;
+      }
+
+      const na = String(a?.name || a?.id || "");
+      const nb = String(b?.name || b?.id || "");
+      return na.localeCompare(nb, "ko");
+    });
+  }
+
+  // =========================
+  // Stage helper
+  // =========================
+  function stageCode(main, sub){
+    const m = String(main);
+    const s = (Number(sub)<10) ? ("0"+String(Number(sub))) : String(Number(sub));
+    return m + "-" + s;
+  }
+  function parseStageCode(code){
+    const p = String(code).split("-");
+    return { main:Number(p[0]||1), sub:Number(p[1]||1) };
+  }
+  function nextStage(main, sub){
+    if(main===MAIN_STAGE_COUNT && sub===SUB_STAGE_COUNT) return null;
+    if(sub<SUB_STAGE_COUNT) return stageCode(main, sub+1);
+    return stageCode(main+1, 1);
+  }
+
+  // =========================
+  // Stage master
+  // =========================
+  const STAGE_MASTER = [
+    { bossName:"튜토리얼 시스템", gimmick:"강제청산 학습", fxMin:1000, fxMax:1200 },
+    { bossName:"잠식된 선동가",   gimmick:"패턴 예고 강화", fxMin:1050, fxMax:1250 },
+    { bossName:"탐욕의 큰손",     gimmick:"자본 잠식", fxMin:1100, fxMax:1350 },
+    { bossName:"냉혈한 매니저",   gimmick:"공매도", fxMin:1150, fxMax:1400 },
+    { bossName:"달러의 군주",     gimmick:"금리 인상", fxMin:1200, fxMax:1500 },
+    { bossName:"공허의 약탈자",   gimmick:"실시간 환율", fxMin:1000, fxMax:1800 },
+    { bossName:"자애로운 성자",   gimmick:"유동성 공급", fxMin:1300, fxMax:1300 },
+  ];
+  function masterFor(main){
+    const idx = clamp(main-1, 0, STAGE_MASTER.length-1);
+    return STAGE_MASTER[idx];
+  }
+
+  // =========================
+  // Canvas setup
+  // =========================
+  const canvas = el("game");
+  const ctx = canvas.getContext("2d");
+
+  (function ensureRoundRect(){
+    try{
+      if(!CanvasRenderingContext2D || CanvasRenderingContext2D.prototype.roundRect) return;
+      CanvasRenderingContext2D.prototype.roundRect = function(x,y,w,h,r){
+        const rr = (typeof r==="number") ? {tl:r,tr:r,br:r,bl:r} : (r||{tl:0,tr:0,br:0,bl:0});
+        const tl=rr.tl||0,tr=rr.tr||0,br=rr.br||0,bl=rr.bl||0;
+        this.moveTo(x+tl,y);
+        this.arcTo(x+w,y,x+w,y+h,tr);
+        this.arcTo(x+w,y+h,x,y+h,br);
+        this.arcTo(x,y+h,x,y,bl);
+        this.arcTo(x,y,x+w,y,tl);
+        this.closePath();
+        return this;
+      };
+    }catch(_e){}
+  })();
+
+  // HUD refs
+  const stageHudEl = el("stageHud");
+  const gimmickHudEl = el("gimmickHud");
+  const timeEl = el("time");
+  const playEl = el("play");
+  const manaEl = el("mana");
+  const manaMaxEl = el("manaMax");
+  const fxEl = el("fx");
+  const fxMulEl = el("fxMul");
+  const fxNextEl = el("fxNext");
+  const fxCdEl = el("fxCd");
+  const bossNameEl = el("bossName");
+  const patternTextEl = el("patternText");
+  const nextPatternTextEl = el("nextPatternText");
+  const doomChip = el("doomChip");
+  const doomTextEl = el("doomText");
+  const scoreEl = el("score");
+  const coinsEl = el("coins");
+  const basePEl = el("baseP");
+  const baseEEl = el("baseE");
+  const progressBarEl = el("progressBar");
+  const progressPctEl = el("progressPct");
+  const overlayMsgEl = el("overlayMsg");
+  const cardsWrap = el("cards");
+  const dbgEl = el("dbg");
+
+  // Modals
+  const titleModal = el("titleModal");
+  const howModal = el("howModal");
+  const startMenuModal = el("startMenuModal");
+  const stageModal = el("stageModal");
+  const loadoutModal = el("loadoutModal");
+  const endModal = el("endModal");
+
+  // Buttons
+  el("startBtn").addEventListener("click", ()=>{ hideModal(titleModal); showModal(startMenuModal); });
+  el("howBtn").addEventListener("click", ()=>{ showModal(howModal); });
+  el("howCloseBtn").addEventListener("click", ()=>{ hideModal(howModal); });
+  howModal.addEventListener("click", (e)=>{ if(e.target===howModal) hideModal(howModal); });
+
+  el("startMenuBackBtn").addEventListener("click", ()=>{ hideModal(startMenuModal); showModal(titleModal); });
+  el("goStageSelectBtn").addEventListener("click", ()=>{ hideModal(startMenuModal); openStageSelect(); });
+  el("goLoadoutBtn").addEventListener("click", ()=>{ hideModal(startMenuModal); openLoadout(); });
+
+  el("openStageBtn").addEventListener("click", openStageSelect);
+  el("openLoadoutBtn").addEventListener("click", openLoadout);
+
+  el("closeStageBtn").addEventListener("click", ()=>hideModal(stageModal));
+  el("backToTitleBtn").addEventListener("click", ()=>{ hideModal(stageModal); showModal(titleModal); });
+  el("resetProgressBtn").addEventListener("click", ()=>{ stageProgress.clear(); saveProgress(); buildStageUI(); alert("진행도 초기화 완료"); });
+
+  el("retryBtn").addEventListener("click", ()=>{ hideModal(endModal); startGame(selectedStageCode); });
+  el("nextBtn").addEventListener("click", ()=>{
+    const cur = parseStageCode(selectedStageCode);
+    const nx = nextStage(cur.main, cur.sub);
+    if(!nx){ alert("마지막 스테이지입니다."); return; }
+    hideModal(endModal);
+    selectedStageCode = nx;
+    startGame(selectedStageCode);
+  });
+
+  // =========================
+  // Overlay
+  // =========================
+  let overlayTimer = null;
+  function overlay(msg){
+    overlayMsgEl.textContent = msg;
+    overlayMsgEl.classList.add("show");
+    if(overlayTimer) clearTimeout(overlayTimer);
+    overlayTimer = setTimeout(()=>overlayMsgEl.classList.remove("show"), 900);
+  }
+
+  // =========================
+  // Loadout UI
+  // =========================
+  const tabEquipBtn = el("tabEquip");
+  const tabTotemBtn = el("tabTotem");
+  const slotRowEl = el("slotRow");
+  const invWrapEl = el("invWrap");
+  const equipCountEl = el("equipCount");
+  const draw1Btn = el("draw1Btn");
+  const draw10Btn = el("draw10Btn");
+  const sortSelectEl = el("sortSelect");
+
+  el("loadoutCloseBtn").addEventListener("click", ()=>hideModal(loadoutModal));
+  el("clearInvBtn").addEventListener("click", ()=>{ loadoutState.inv[loadoutState.tab] = []; saveLoadout(); renderLoadout(); });
+
+  tabEquipBtn.addEventListener("click", ()=>{ loadoutState.tab="equip"; saveLoadout(); renderLoadout(); });
+  tabTotemBtn.addEventListener("click", ()=>{ loadoutState.tab="totem"; saveLoadout(); renderLoadout(); });
+
+  sortSelectEl.addEventListener("change", ()=>{
+    setSortMode(loadoutState.tab, sortSelectEl.value);
+    sortInventory(loadoutState.tab);
+    saveLoadout();
+    renderLoadout();
+  });
+
+  draw1Btn.addEventListener("click", ()=>{ drawMany(loadoutState.tab, 1); renderLoadout(); });
+  draw10Btn.addEventListener("click", ()=>{ drawMany(loadoutState.tab, 10); renderLoadout(); });
+
+  function openLoadout(){
+    renderLoadout();
+    showModal(loadoutModal);
+  }
+
+  function slotInner(tab, item, isSlot){
+    if(!item) return "<b>빈 슬롯</b><span style=\"opacity:.7\">("+(tab==="equip"?"장비":"토템")+")</span>";
+    const gk = item.grade || "common";
+    const cls = gradeCssClass(gk);
+    const tag = '<span class="gradeTag '+cls+'">'+gradeLabel(gk)+'</span>';
+
+    const qty = Math.max(1, Number(item.qty)||1);
+    const qtyText = (!isSlot)
+      ? ' <span style="opacity:.9;font-weight:1000;">x'+qty+'</span>'
+      : '';
+
+    const name = '<span class="itemName '+cls+'">'+escapeHtml(item.name||item.id)+'</span>' + qtyText;
+
+    let icon = "";
+    if(tab==="totem"){
+      icon = svgForPattern(item.patternId || "SYM_TRI");
+    }else{
+      icon = '<div class="miniSvg" style="display:grid;place-items:center;font-weight:1000;">🧿</div>';
+    }
+
+    return icon + '<div style="display:flex;flex-direction:column;gap:4px;">'
+      + '<div>'+tag+name+'</div>'
+      + '<div class="small" style="opacity:.72;">'+(isSlot?"슬롯":"인벤")+'</div>'
+      + '</div>';
+  }
+
+  function renderLoadout(){
+    sortInventory(loadoutState.tab);
+
+    tabEquipBtn.classList.toggle("active", loadoutState.tab==="equip");
+    tabTotemBtn.classList.toggle("active", loadoutState.tab==="totem");
+
+    draw1Btn.textContent = (loadoutState.tab==="equip") ? "장비 1연 뽑기" : "토템 1연 뽑기";
+    draw10Btn.textContent = (loadoutState.tab==="equip") ? "장비 10연 뽑기" : "토템 10연 뽑기";
+
+    sortSelectEl.value = getSortMode(loadoutState.tab);
+
+    const tab = loadoutState.tab;
+    const slots = loadoutState.equip[tab];
+
+    slotRowEl.innerHTML = "";
+    slots.forEach((it, idx)=>{
+      const div = document.createElement("div");
+      div.className = "slot";
+      div.innerHTML = slotInner(tab, it, true);
+      div.title = "클릭하면 해제";
+      div.addEventListener("click", ()=>{ if(it){ unequipToInv(tab, idx); renderLoadout(); } });
+      slotRowEl.appendChild(div);
+    });
+
+    invWrapEl.innerHTML = "";
+    const inv = loadoutState.inv[tab];
+    inv.forEach((it, idx)=>{
+      // (안전) undefined가 섞여있으면 무시
+      if(!it || !it.id) return;
+      const div = document.createElement("div");
+      div.className = "invItem";
+      div.innerHTML = slotInner(tab, it, false);
+      div.title = "클릭하면 장착";
+      div.addEventListener("click", ()=>{ equipFromInv(tab, idx); renderLoadout(); });
+      invWrapEl.appendChild(div);
+    });
+
+    const equipCount = loadoutState.equip.equip.filter(Boolean).length;
+    const totemCount = loadoutState.equip.totem.filter(Boolean).length;
+    equipCountEl.textContent = "장비 " + equipCount + "/3 · 토템 " + totemCount + "/3";
+  }
+
+  function equipFromInv(tab, invIndex){
+    normalizeInventory(tab);
+    const inv = loadoutState.inv[tab];
+    if(invIndex<0 || invIndex>=inv.length) return;
+
+    const slots = loadoutState.equip[tab];
+    const empty = slots.findIndex(x=>!x);
+    if(empty===-1) { overlay("슬롯이 가득 찼어"); return; }
+
+    const stack = inv[invIndex];
+    if(!stack || !stack.id) return; // 안전
+
+    const qty = Math.max(1, Number(stack.qty)||1);
+
+    slots[empty] = { id:stack.id, name:stack.name, grade:stack.grade, patternId:stack.patternId||null };
+
+    if(qty>1){
+      stack.qty = qty - 1;
+    }else{
+      inv.splice(invIndex, 1);
+    }
+
+    sortInventory(tab);
+    saveLoadout();
+  }
+
+  function unequipToInv(tab, slotIndex){
+    const slots = loadoutState.equip[tab];
+    if(slotIndex<0 || slotIndex>=slots.length) return;
+    const item = slots[slotIndex];
+    if(!item) return;
+    slots[slotIndex]=null;
+    addToInventoryStack(tab, item);
+    sortInventory(tab);
+    saveLoadout();
+  }
+
+  function drawMany(tab, n){
+    const count = Math.max(1, Number(n)||1);
+    const tbl = gachaTableFor(tab);
+
+    for(let i=0;i<count;i++){
+      const g = rollFromTable(tbl);
+      const pick = pickRandomItem(tab, g);
+
+      // (핵심) pick이 null/undefined면 id 접근하면 터짐 → 방어
+      if(!pick || !pick.id){
+        console.warn("[gacha] pickRandomItem failed", { tab, g });
+        continue;
+      }
+
+      addToInventoryStack(tab, {
+        id: pick.id,
+        name: pick.name,
+        grade: pick.grade || g,
+        patternId: pick.patternId || null,
+      });
+    }
+
+    sortInventory(tab);
+    saveLoadout();
+  }
+
+  // =========================
+  // Stage select UI
+  // =========================
+  const mainStageGridEl = el("mainStageGrid");
+  const subStageGridEl = el("subStageGrid");
+  const selectedMainEl = el("selectedMain");
+
+  let selectedStageCode = stageCode(1,1);
+  let selectedMain = 1;
+
+  function openStageSelect(){
+    buildStageUI();
+    showModal(stageModal);
+  }
+
+  function buildStageUI(){
+    mainStageGridEl.innerHTML = "";
+    for(let m=1;m<=MAIN_STAGE_COUNT;m++){
+      const master = masterFor(m);
+      const div = document.createElement("div");
+      div.className = "stageBtn" + (m===selectedMain?" active":"");
+      div.innerHTML = '<div class="t">STAGE '+m+' <span style="opacity:.75">·</span> <span style="opacity:.9">'+escapeHtml(master.bossName)+'</span></div>'
+        + '<div class="d">'+escapeHtml(master.gimmick)+'</div>';
+      div.addEventListener("click", ()=>{ selectedMain=m; buildStageUI(); });
+      mainStageGridEl.appendChild(div);
+    }
+
+    selectedMainEl.textContent = String(selectedMain);
+
+    subStageGridEl.innerHTML = "";
+    for(let s=1;s<=SUB_STAGE_COUNT;s++){
+      const code = stageCode(selectedMain, s);
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "subBtn" + (s===MIDBOSS_SUB_INDEX?" midboss":"");
+      btn.innerHTML = '<div style="font-weight:1000;font-size:16px;">'+s+'</div>'
+        + '<div style="font-size:11px;opacity:.85;">'+(s===MIDBOSS_SUB_INDEX?"B":"")+'</div>';
+      btn.addEventListener("click", ()=>{
+        selectedStageCode = code;
+        hideModal(stageModal);
+        startGame(code);
+      });
+      subStageGridEl.appendChild(btn);
+    }
+  }
+
+  // =========================
+  // Units (UI에는 스탯 미표기)
+  // =========================
+  const UNIT_DB = [
+    { id:"U1", name:"개미 병사", cost:8,  hp:240, atk:18, rate:0.9, range:18,  speed:70,  unlockAt: "1-01" },
+    { id:"U2", name:"단타 자객", cost:14, hp:180, atk:42, rate:1.4, range:16,  speed:110, unlockAt: "1-01" },
+    { id:"U3", name:"헤지 마법사", cost:26, hp:220, atk:22, rate:0.7, range:140, speed:60,  unlockAt: "1-01" },
+    { id:"U4", name:"포지션 브레이커", cost:36, hp:360, atk:38, rate:0.9, range:26,  speed:80,  unlockAt: "1-02" },
+    { id:"U5", name:"리밸런스 대포",   cost:52, hp:260, atk:78, rate:1.6, range:170, speed:55,  unlockAt: "1-04" },
+  ];
+
+  function isUnlockedUnit(u){
+    if(u && u.id === "U1") return true;
+    const req = u.unlockAt || "1-01";
+    return (getBestProgress(req) >= 30);
+  }
+
+  function buildCards(){
+    cardsWrap.innerHTML = "";
+    UNIT_DB.forEach((u, idx)=>{
+      const btn = document.createElement("button");
+      btn.className = "card";
+      btn.type = "button";
+      const unlocked = isUnlockedUnit(u);
+      btn.disabled = !unlocked;
+
+      btn.innerHTML = '<div class="name">'+escapeHtml(u.name)+'</div>'
+        + '<div class="meta">'
+        + '<span>비용 '+u.cost+'</span>'
+        + (unlocked ? '<span style="opacity:.75">#'+(idx+1)+'</span>' : '<span style="opacity:.85">해금: '+escapeHtml(u.unlockAt)+' 30%+</span>')
+        + '</div>';
+
+      btn.addEventListener("click", ()=>spawnUnit(u));
+      cardsWrap.appendChild(btn);
+    });
+  }
+
+  // =========================
+  // Game state & loop
+  // =========================
+  const state = {
+    running:false,
+    stageCode:"1-01",
+    main:1, sub:1,
+
+    fx:1000,
+    fxNext:1100,
+    fxT:0,
+
+    play:0,
+    timeLeft:CFG.durationSec,
+
+    mana:0,
+    score:0,
+    coins:0,
+
+    baseP: {...CFG.baseP},
+    baseE: {...CFG.baseE},
+
+    units:[],
+    enemies:[],
+
+    kills:0,
+    dmgToEnemyBase:0,
+
+    patternNow:"-",
+    patternNext:"-",
+    patternQueue:[],
+
+    shakeT:0,
+    enemySpawnT:0,
+
+    doomActive:false,
+  };
+
+  function resetStateForStage(code){
+    const {main, sub} = parseStageCode(code);
+    const master = masterFor(main);
+
+    state.running = true;
+    state.stageCode = code;
+    state.main = main; state.sub = sub;
+
+    state.fx = master.fxMin;
+    state.fxNext = master.fxMax;
+    state.fxT = 0;
+
+    state.play = 0;
+    state.timeLeft = CFG.durationSec;
+
+    state.mana = 40;
+    state.score = 0;
+    state.coins = 0;
+
+    state.baseP = {...CFG.baseP};
+    state.baseE = {...CFG.baseE};
+
+    state.units = [];
+    state.enemies = [];
+
+    state.kills = 0;
+    state.dmgToEnemyBase = 0;
+
+    state.patternNow = "-";
+    state.patternNext = "-";
+    state.patternQueue = buildPatternPlan(main, sub);
+
+    state.shakeT = 0;
+    state.enemySpawnT = 0;
+
+    state.doomActive = (main===1);
+
+    stageHudEl.textContent = code;
+    gimmickHudEl.textContent = master.gimmick;
+    bossNameEl.textContent = master.bossName;
+
+    manaMaxEl.textContent = String(CFG.manaMax);
+    doomChip.style.display = state.doomActive ? "flex" : "none";
+
+    buildCards();
+    overlay("게임 시작");
+    updateHUD();
+  }
+
+  function buildPatternPlan(main, sub){
+    const plan = [];
+    plan.push({ at: 20, name: "마나 드레인", type:"mana", amount: 25 });
+    plan.push({ at: 45, name: "공격 속도 저하", type:"slow", dur: 6 });
+    plan.push({ at: 75, name: "환율 급변", type:"fx" });
+
+    if(main===1){
+      plan.push({ at: 105, name: "강제청산", type:"doom" });
+    }
+
+    plan.sort((a,b)=>a.at-b.at);
+    return plan;
+  }
+
+  function spawnUnit(u){
+    if(!state.running) return;
+    if(state.mana < u.cost){ overlay("마나 부족"); return; }
+    state.mana -= u.cost;
+    state.units.push({
+      name:u.name,
+      x:CFG.playerSpawnX,
+      y:CFG.laneY,
+      hp:u.hp,
+      maxHp:u.hp,
+      atk:u.atk,
+      rate:u.rate,
+      range:u.range,
+      speed:u.speed,
+      cd:0,
+    });
+  }
+
+  function spawnEnemy(){
+    const e = { x:CFG.enemySpawnX, y:CFG.laneY, hp:200, maxHp:200, atk:16, rate:1.0, range:18, speed:62, cd:0 };
+    state.enemies.push(e);
+  }
+
+  function applyPattern(p){
+    state.patternNow = p.name;
+    if(p.type==="mana"){
+      state.mana = Math.max(0, state.mana - (p.amount||0));
+      overlay("패턴: 마나 드레인");
+    }else if(p.type==="slow"){
+      overlay("패턴: 공속 저하");
+    }else if(p.type==="fx"){
+      state.fxT = CFG.fxChangeEverySec - 0.2;
+      overlay("패턴: 환율 급변");
+    }else if(p.type==="doom"){
+      state.baseP.hp = 0;
+      state.mana = 0;
+      overlay("강제청산 발동");
+      endGame(false, "강제청산");
+    }
+  }
+
+  function updatePatterns(dt){
+    if(!state.patternQueue.length){
+      state.patternNext = "-";
+      return;
+    }
+    const next = state.patternQueue[0];
+    state.patternNext = next.name + " · " + fmt1(Math.max(0, next.at - state.play)) + "s";
+
+    const until = next.at - state.play;
+    if(until <= CFG.vibrateLeadSec && until > 0){
+      state.shakeT = Math.max(state.shakeT, until);
+    }
+
+    if(state.play >= next.at){
+      state.patternQueue.shift();
+      applyPattern(next);
+    }
+  }
+
+  function updateFX(dt){
+    const master = masterFor(state.main);
+
+    state.fxT += dt;
+    const cd = CFG.fxChangeEverySec - state.fxT;
+    const announce = cd <= CFG.fxAnnounceSec && cd > 0;
+
+    if(announce){
+      fxNextEl.textContent = String(state.fxNext);
+      fxCdEl.textContent = fmt1(cd);
+    }else{
+      fxNextEl.textContent = "-";
+      fxCdEl.textContent = fmt1(Math.max(0, CFG.fxAnnounceSec));
+    }
+
+    if(state.fxT >= CFG.fxChangeEverySec){
+      state.fxT = 0;
+      state.fx = state.fxNext;
+      const r = Math.random();
+      state.fxNext = master.fxMin + Math.round(r*(master.fxMax-master.fxMin));
+      overlay("환율 변동");
+    }
+
+    const mul = state.fx / 1000;
+    fxMulEl.textContent = mul.toFixed(2);
+  }
+
+  function updateEntities(dt){
+    state.enemySpawnT += dt;
+    if(state.enemySpawnT >= CFG.enemySpawnEvery){
+      state.enemySpawnT = 0;
+      spawnEnemy();
+    }
+
+    const units = state.units;
+    const enemies = state.enemies;
+
+    for(const u of units){
+      u.cd = Math.max(0, u.cd - dt);
+      let target = null;
+      let bestDx = Infinity;
+      for(const e of enemies){
+        const dx = e.x - u.x;
+        if(dx>=0 && dx<bestDx){ bestDx=dx; target=e; }
+      }
+
+      if(!target){
+        const dxBase = state.baseE.x - u.x;
+        if(dxBase <= u.range){
+          if(u.cd<=0){
+            const dmg = u.atk;
+            state.baseE.hp = Math.max(0, state.baseE.hp - dmg);
+            state.dmgToEnemyBase += dmg;
+            state.score += Math.round(dmg*1.5);
+            u.cd = u.rate;
+          }
+        }else{
+          u.x += u.speed * dt;
+        }
+        continue;
+      }
+
+      if(bestDx <= u.range){
+        if(u.cd<=0){
+          target.hp = Math.max(0, target.hp - u.atk);
+          u.cd = u.rate;
+        }
+      }else{
+        u.x += u.speed * dt;
+      }
+    }
+
+    for(const e of enemies){
+      e.cd = Math.max(0, e.cd - dt);
+      let target = null;
+      let bestDx = Infinity;
+      for(const u of units){
+        const dx = e.x - u.x;
+        if(dx>=0 && dx<bestDx){ bestDx=dx; target=u; }
+      }
+
+      if(!target){
+        const dxBase = e.x - state.baseP.x;
+        if(dxBase <= e.range + 20){
+          if(e.cd<=0){
+            state.baseP.hp = Math.max(0, state.baseP.hp - e.atk);
+            e.cd = e.rate;
+          }
+        }else{
+          e.x -= e.speed * dt;
+        }
+        continue;
+      }
+
+      if(bestDx <= e.range){
+        if(e.cd<=0){
+          target.hp = Math.max(0, target.hp - e.atk);
+          e.cd = e.rate;
+        }
+      }else{
+        e.x -= e.speed * dt;
+      }
+    }
+
+    for(let i=units.length-1;i>=0;i--){
+      if(units[i].hp<=0) units.splice(i,1);
+    }
+    for(let i=enemies.length-1;i>=0;i--){
+      if(enemies[i].hp<=0){
+        enemies.splice(i,1);
+        state.kills += 1;
+        state.score += 120;
+        state.coins += 1;
+      }
+    }
+  }
+
+  function updateMana(dt){
+    state.mana = clamp(state.mana + CFG.manaRegenPerSec * dt, 0, CFG.manaMax);
+  }
+
+  function computeProgressPct(){
+    const p = (state.dmgToEnemyBase / state.baseE.maxHp) * 100;
+    return clamp(Math.round(p), 0, 100);
+  }
+
+  function updateHUD(){
+    timeEl.textContent = fmt1(state.timeLeft);
+    playEl.textContent = fmt1(state.play);
+    manaEl.textContent = String(Math.floor(state.mana));
+
+    fxEl.textContent = String(state.fx);
+
+    if(state.doomActive){
+      doomTextEl.textContent = fmt1(Math.max(0, CFG.doomAtSec - state.play));
+      doomChip.style.display = "flex";
+    }else{
+      doomChip.style.display = "none";
+    }
+
+    scoreEl.textContent = String(state.score);
+    coinsEl.textContent = String(state.coins);
+
+    basePEl.textContent = String(state.baseP.hp);
+    baseEEl.textContent = String(state.baseE.hp);
+
+    patternTextEl.textContent = state.patternNow;
+    nextPatternTextEl.textContent = state.patternNext;
+
+    const progress = computeProgressPct();
+    progressPctEl.textContent = String(progress);
+    progressBarEl.style.width = progress + "%";
+
+    dbgEl.textContent = "인벤 장비 " + loadoutState.inv.equip.length + "개 / 토템 " + loadoutState.inv.totem.length + "개";
+  }
+
+  function draw(){
+    const w = canvas.width, h = canvas.height;
+    ctx.clearRect(0,0,w,h);
+
+    let sx=0, sy=0;
+    if(state.shakeT>0){
+      const amp = 6;
+      sx = (Math.random()*2-1)*amp;
+      sy = (Math.random()*2-1)*amp;
+    }
+
+    ctx.save();
+    ctx.translate(sx, sy);
+
+    ctx.globalAlpha = 0.95;
+    ctx.strokeStyle = "rgba(255,255,255,.10)";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(60, CFG.laneY);
+    ctx.lineTo(w-60, CFG.laneY);
+    ctx.stroke();
+
+    drawBase(state.baseP.x, CFG.laneY-150, state.baseP.w, state.baseP.h, state.baseP.hp/state.baseP.maxHp, true);
+    drawBase(state.baseE.x, CFG.laneY-150, state.baseE.w, state.baseE.h, state.baseE.hp/state.baseE.maxHp, false);
+
+    for(const u of state.units){
+      drawUnit(u.x, u.y, u.hp/u.maxHp, true);
+    }
+    for(const e of state.enemies){
+      drawUnit(e.x, e.y, e.hp/e.maxHp, false);
+    }
+
+    ctx.restore();
+
+    ctx.fillStyle = "rgba(255,255,255,.14)";
+    ctx.font = "900 16px system-ui";
+    ctx.fillText("STAGE " + state.stageCode, 18, 24);
+  }
+
+  function drawBase(x,y,w,h,ratio,isPlayer){
+    ctx.fillStyle = isPlayer ? "rgba(105,210,255,.12)" : "rgba(255,123,123,.10)";
+    ctx.strokeStyle = isPlayer ? "rgba(105,210,255,.40)" : "rgba(255,123,123,.30)";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.roundRect(x - w/2, y, w, h, 14);
+    ctx.fill();
+    ctx.stroke();
+
+    const bw = w-14;
+    const bx = x - bw/2;
+    const by = y - 12;
+    ctx.fillStyle = "rgba(255,255,255,.10)";
+    ctx.fillRect(bx, by, bw, 8);
+    ctx.fillStyle = "rgba(255,255,255,.75)";
+    ctx.fillRect(bx, by, bw*clamp(ratio,0,1), 8);
+  }
+
+  function drawUnit(x,y,ratio,isPlayer){
+    const r = 14;
+    ctx.fillStyle = isPlayer ? "rgba(105,210,255,.25)" : "rgba(255,123,123,.22)";
+    ctx.strokeStyle = isPlayer ? "rgba(105,210,255,.55)" : "rgba(255,123,123,.42)";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(x, y, r, 0, Math.PI*2);
+    ctx.fill();
+    ctx.stroke();
+
+    const bw = 32;
+    ctx.fillStyle = "rgba(255,255,255,.10)";
+    ctx.fillRect(x-bw/2, y+20, bw, 5);
+    ctx.fillStyle = "rgba(255,255,255,.75)";
+    ctx.fillRect(x-bw/2, y+20, bw*clamp(ratio,0,1), 5);
+  }
+
+  function endGame(win, reason){
+    if(!state.running) return;
+    state.running = false;
+
+    let progress = computeProgressPct();
+    const {main} = parseStageCode(state.stageCode);
+
+    if(main===1) progress = Math.max(progress, 30);
+
+    recordProgress(state.stageCode, progress);
+
+    const bonus = calcBonus(progress);
+    state.coins += bonus;
+
+    updateHUD();
+
+    showEndModal(win, reason, progress, bonus);
+  }
+
+  function calcBonus(progress){
+    if(progress>=90) return 80;
+    if(progress>=60) return 40;
+    if(progress>=30) return 20;
+    return 0;
+  }
+
+  function showEndModal(win, reason, progress, bonus){
+    el("endStage").textContent = state.stageCode;
+    const title = el("endTitle");
+    title.textContent = win ? "CLEARED" : "DEFEAT";
+    title.classList.toggle("lose", !win);
+
+    const s1 = el("star1"), s2=el("star2"), s3=el("star3");
+    s1.classList.toggle("on", progress>=30);
+    s2.classList.toggle("on", progress>=60);
+    s3.classList.toggle("on", progress>=90);
+
+    el("endScore").textContent = String(state.score);
+    el("endCoins").textContent = String(state.coins);
+    el("endTime").textContent = fmt1(state.play);
+    el("endProgress").textContent = String(progress);
+    el("endKills").textContent = String(state.kills);
+    el("endDmg").textContent = String(state.dmgToEnemyBase);
+
+    el("endBonus").textContent = String(bonus);
+    el("bonusWhy").textContent = (bonus>0) ? (progress>=90?"90%+":"30/60%+") : (reason||"기본");
+
+    const map = el("stageMap");
+    map.innerHTML = "";
+    for(let i=1;i<=SUB_STAGE_COUNT;i++){
+      const node = document.createElement("div");
+      node.className = "node" + (i===MIDBOSS_SUB_INDEX?" mid":"");
+      node.textContent = (i===MIDBOSS_SUB_INDEX) ? "B" : String(i);
+      map.appendChild(node);
+      if(i<SUB_STAGE_COUNT){
+        const c = document.createElement("div");
+        c.className = "conn";
+        map.appendChild(c);
+      }
+    }
+
+    const campaignPct = getBestProgress(state.stageCode);
+    el("campaignPct").textContent = String(campaignPct);
+    el("campaignBar").style.width = campaignPct + "%";
+
+    showModal(endModal);
+  }
+
+  function startGame(code){
+    hideModal(titleModal);
+    hideModal(startMenuModal);
+    hideModal(stageModal);
+    hideModal(loadoutModal);
+
+    resetStateForStage(code);
+  }
+
+  // keyboard
+  window.addEventListener("keydown", (e)=>{
+    if(e.key==="1") spawnUnit(UNIT_DB[0]);
+    if(e.key==="2") spawnUnit(UNIT_DB[1]);
+    if(e.key==="3") spawnUnit(UNIT_DB[2]);
+    if(e.key==="r" || e.key==="R"){
+      if(!state.running) { hideModal(endModal); startGame(selectedStageCode); }
+    }
+    if(e.key==="n" || e.key==="N"){
+      if(!state.running){
+        const cur = parseStageCode(selectedStageCode);
+        const nx = nextStage(cur.main, cur.sub);
+        if(nx){ hideModal(endModal); selectedStageCode = nx; startGame(selectedStageCode); }
+      }
+    }
+  });
+
+  // =========================
+  // Loop
+  // =========================
+  let lastTs = performance.now();
+  function tick(ts){
+    const dt = Math.min(0.05, (ts-lastTs)/1000);
+    lastTs = ts;
+
+    if(state.running){
+      state.play += dt;
+      state.timeLeft = Math.max(0, CFG.durationSec - state.play);
+
+      if(state.doomActive && state.play >= CFG.doomAtSec){
+        // 강제청산은 딱 1회만
+        if(state.baseP.hp > 0) applyPattern({ name:"강제청산", type:"doom" });
+      }
+
+      updateFX(dt);
+      updatePatterns(dt);
+      updateMana(dt);
+      updateEntities(dt);
+
+      state.shakeT = Math.max(0, state.shakeT - dt);
+
+      if(state.baseE.hp<=0){
+        endGame(true, "승리");
+      }else if(state.baseP.hp<=0){
+        endGame(false, "본진 파괴");
+      }else if(state.timeLeft<=0){
+        endGame(false, "시간 종료");
+      }
+
+      updateHUD();
+    }
+
+    draw();
+    requestAnimationFrame(tick);
+  }
+
+  // =========================
+  // Tests (console)
+  // =========================
+  function runUnitTests(){
+    // rollFromTable determinism
+    const k0 = rollFromTable(EQUIP_GACHA, 0.0001);
+    const k1 = rollFromTable(EQUIP_GACHA, 0.9999);
+    if(!k0 || !k1) throw new Error("rollFromTable returns empty");
+
+    // chart patterns unique
+    const names = CHART_PATTERNS.map(x=>x.name);
+    if(new Set(names).size !== names.length) throw new Error("CHART_PATTERNS duplicate names");
+
+    // svg content
+    const svg = svgForPattern(CHART_PATTERNS[0].id);
+    if(svg.indexOf("polyline")===-1) throw new Error("svgForPattern invalid");
+
+    // stageCode format
+    if(stageCode(1,1)!=="1-01" || stageCode(7,7)!=="7-07") throw new Error("stageCode formatting broken");
+
+    // totem pool ids unique
+    const allTotems = Object.values(TOTEM_BY_GRADE).flat();
+    const tid = allTotems.map(x=>x.id);
+    if(new Set(tid).size !== tid.length) throw new Error("TOTEM_BY_GRADE has duplicate ids");
+
+    // equip pool ids unique
+    const allEquips = Object.values(EQUIP_BY_GRADE).flat();
+    const eid = allEquips.map(x=>x.id);
+    if(new Set(eid).size !== eid.length) throw new Error("EQUIP_BY_GRADE has duplicate ids");
+
+    // stacking
+    loadoutState.inv.equip = [
+      {id:"E_PROTECT", name:"A", grade:"common"},
+      {id:"E_PROTECT", name:"A", grade:"common"},
+      {id:"E_STOP_RING", name:"B", grade:"rare"},
+    ];
+    normalizeInventory("equip");
+    if(loadoutState.inv.equip.length !== 2) throw new Error("normalizeInventory failed to stack");
+    const a = loadoutState.inv.equip.find(x=>x.id==="E_PROTECT");
+    if(!a || a.qty !== 2) throw new Error("stack qty incorrect");
+
+    // NEW: myth pool must not be empty (was causing undefined.id crash)
+    if(!Array.isArray(TOTEM_BY_GRADE.myth) || TOTEM_BY_GRADE.myth.length < 1){
+      throw new Error("TOTEM_BY_GRADE.myth must have at least 1 item");
+    }
+
+    // NEW: pickRandomItem must always return an item even for missing grade
+    const p1 = pickRandomItem("totem", "relic");
+    if(!p1 || !p1.id) throw new Error("pickRandomItem fallback failed (totem relic)");
+
+    // NEW: drawMany should never throw even if a grade pool is empty (guarded)
+    loadoutState.inv.totem = [];
+    drawMany("totem", 50);
+    normalizeInventory("totem");
+    if(loadoutState.inv.totem.length < 1) throw new Error("drawMany did not add any totems");
+
+    console.log("[tests] ok", {
+      equipGrades: Object.keys(EQUIP_BY_GRADE),
+      totemGrades: Object.keys(TOTEM_BY_GRADE),
+      chartTotems: Object.values(CHART_TOTEMS).flat().length,
+      mythTotems: TOTEM_BY_GRADE.myth.length,
+    });
+  }
+
+  // =========================
+  // Boot
+  // =========================
+  function boot(){
+    loadProgress();
+    loadLoadout();
+
+    selectedStageCode = stageCode(1,1);
+    selectedMain = 1;
+
+    showModal(titleModal);
+
+    buildCards();
+    renderLoadout();
+
+    runUnitTests();
+
+    requestAnimationFrame(tick);
+  }
+
+  boot();
+})();
+</script>
+</body>
+</html>
