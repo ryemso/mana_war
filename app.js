@@ -356,6 +356,27 @@
   // =========================
   // Inventory helpers
   // =========================
+  const MAX_ENHANCE = 9; // 최대 +9
+
+  function totalQtyForId(tab, id){
+    normalizeInventory(tab);
+    const inv = loadoutState.inv[tab];
+    const key = String(id);
+    let total = 0;
+    for(const it of (inv||[])){
+      if(!it || !it.id) continue;
+      if(String(it.id) === key){
+        total += maxQty(it.qty);
+      }
+    }
+    return total;
+  }
+
+  function maxQty(q){
+    return Math.max(1, Number(q)||1);
+  }
+
+
   function getSortMode(tab){
     const t = tab || loadoutState.tab;
     const m = loadoutState.sortMode && loadoutState.sortMode[t];
@@ -375,34 +396,38 @@
     const inv = loadoutState.inv[tab];
     if(!Array.isArray(inv) || inv.length===0) return;
 
-    const byId = new Map();
+    // v7: 강화 레벨(lv)에 따라 같은 이름이라도 (id+lv)로 스택 분리
+    const byKey = new Map();
     for(const it of inv){
       if(!it || !it.id) continue;
-      const key = String(it.id);
+      const lv = clamp(Math.round(Number(it.lv)||0), 0, MAX_ENHANCE);
+      const key = String(it.id) + '::' + String(lv);
       const qty = Math.max(1, Number(it.qty)||1);
-      const g = String(it.grade||"common");
+      const g = String(it.grade||'common');
 
-      if(!byId.has(key)){
-        byId.set(key, { id: it.id, name: it.name, grade: g, patternId: it.patternId||null, qty });
-      }else{
-        const cur = byId.get(key);
+      if(!byKey.has(key)) {
+        byKey.set(key, { id: it.id, name: it.name, grade: g, patternId: it.patternId||null, lv, qty });
+      } else {
+        const cur = byKey.get(key);
         cur.qty += qty;
       }
     }
-    loadoutState.inv[tab] = Array.from(byId.values());
+    loadoutState.inv[tab] = Array.from(byKey.values());
   }
 
   function addToInventoryStack(tab, item){
     if(!item || !item.id) return;
     normalizeInventory(tab);
     const inv = loadoutState.inv[tab];
-    const key = String(item.id);
 
-    const found = inv.find(x=>String(x.id)===key);
+    const lv = clamp(Math.round(Number(item.lv)||0), 0, MAX_ENHANCE);
+    const keyId = String(item.id);
+
+    const found = inv.find(x=>x && String(x.id)===keyId && clamp(Math.round(Number(x.lv)||0),0,MAX_ENHANCE)===lv);
     if(found){
       found.qty = Math.max(1, Number(found.qty)||1) + 1;
     }else{
-      inv.push({ id:item.id, name:item.name, grade:item.grade||"common", patternId:item.patternId||null, qty:1 });
+      inv.push({ id:item.id, name:item.name, grade:item.grade||'common', patternId:item.patternId||null, lv, qty:1 });
     }
   }
 
@@ -418,21 +443,26 @@
       const qb = Math.max(1, Number(b?.qty)||1);
       const ra = gradeRank(a?.grade);
       const rb = gradeRank(b?.grade);
+      const la = clamp(Math.round(Number(a?.lv)||0),0,MAX_ENHANCE);
+      const lb = clamp(Math.round(Number(b?.lv)||0),0,MAX_ENHANCE);
 
-      if(mode === "qty_asc"){
+      if(mode === 'qty_asc'){
         if(qa !== qb) return qa - qb;
         if(rb !== ra) return rb - ra;
-      }else if(mode === "qty_desc"){
+        if(lb !== la) return lb - la;
+      }else if(mode === 'qty_desc'){
         if(qa !== qb) return qb - qa;
         if(rb !== ra) return rb - ra;
+        if(lb !== la) return lb - la;
       }else{
         if(rb !== ra) return rb - ra;
+        if(lb !== la) return lb - la;
         if(qa !== qb) return qb - qa;
       }
 
-      const na = String(a?.name || a?.id || "");
-      const nb = String(b?.name || b?.id || "");
-      return na.localeCompare(nb, "ko");
+      const na = String(a?.name || a?.id || '');
+      const nb = String(b?.name || b?.id || '');
+      return na.localeCompare(nb, 'ko');
     });
   }
 
@@ -602,28 +632,29 @@
   }
 
   function slotInner(tab, item, isSlot){
-    if(!item) return "<b>빈 슬롯</b><span style=\"opacity:.7\">("+(tab==="equip"?"장비":"토템")+")</span>";
-    const gk = item.grade || "common";
+    if(!item) return '<b>빈 슬롯</b><span style="opacity:.7">('+(tab==='equip'?'장비':'토템')+')</span>';
+    const gk = item.grade || 'common';
     const cls = gradeCssClass(gk);
     const tag = '<span class="gradeTag '+cls+'">'+gradeLabel(gk)+'</span>';
 
     const qty = Math.max(1, Number(item.qty)||1);
-    const qtyText = (!isSlot)
-      ? ' <span style="opacity:.9;font-weight:1000;">x'+qty+'</span>'
-      : '';
+    const lv = clamp(Math.round(Number(item.lv)||0), 0, MAX_ENHANCE);
 
-    const name = '<span class="itemName '+cls+'">'+escapeHtml(item.name||item.id)+'</span>' + qtyText;
+    const qtyText = (!isSlot) ? ' <span style="opacity:.9;font-weight:1000;">x'+qty+'</span>' : '';
+    const lvText  = (lv>0) ? ' <span class="enhLv">+'+lv+'</span>' : '';
 
-    let icon = "";
-    if(tab==="totem"){
-      icon = svgForPattern(item.patternId || "SYM_TRI");
+    const name = '<span class="itemName '+cls+'">'+escapeHtml(item.name||item.id)+'</span>' + lvText + qtyText;
+
+    let icon = '';
+    if(tab==='totem'){
+      icon = svgForPattern(item.patternId || 'SYM_TRI');
     }else{
       icon = '<div class="miniSvg" style="display:grid;place-items:center;font-weight:1000;">🧿</div>';
     }
 
-    return icon + '<div style="display:flex;flex-direction:column;gap:4px;">'
+    return icon + '<div style="display:flex;flex-direction:column;gap:4px;min-width:0;">'
       + '<div class="nameLine">'+tag+name+'</div>'
-      + '<div class="small" style="opacity:.72;">'+(isSlot?"슬롯":"인벤")+'</div>'
+      + '<div class="small" style="opacity:.72;">'+(isSlot?'슬롯':'인벤')+'</div>'
       + '</div>';
   }
 
@@ -678,16 +709,34 @@
       slotRowEl.appendChild(div);
     });
 
-    invWrapEl.innerHTML = "";
+    invWrapEl.innerHTML = '';
     const inv = loadoutState.inv[tab];
     inv.forEach((it, idx)=>{
-      // (안전) undefined가 섞여있으면 무시
       if(!it || !it.id) return;
-      const div = document.createElement("div");
-      div.className = "invItem";
-      div.innerHTML = slotInner(tab, it, false);
-      div.title = "클릭하면 장착";
-      div.addEventListener("click", ()=>{ equipFromInv(tab, idx); renderLoadout(); });
+      const div = document.createElement('div');
+      div.className = 'invItem';
+
+      const canEnh = (totalQtyForId(tab, it.id) >= 2) && (clamp(Math.round(Number(it.lv)||0),0,MAX_ENHANCE) < MAX_ENHANCE);
+      const enhBtn = canEnh
+        ? '<button class="invBtn" data-action="enh" type="button">강화</button>'
+        : '<button class="invBtn" disabled type="button">강화</button>';
+
+      div.innerHTML = '<div class="invLeft">'+slotInner(tab, it, false)+'</div>'
+        + '<div class="invBtns">'+ enhBtn + '</div>';
+
+      div.title = '클릭하면 장착';
+      div.addEventListener('click', (ev)=>{
+        const btn = ev.target && ev.target.closest ? ev.target.closest('button[data-action]') : null;
+        if(btn && btn.dataset.action==='enh'){
+          ev.stopPropagation();
+          enhanceFromInv(tab, idx);
+          renderLoadout();
+          return;
+        }
+        equipFromInv(tab, idx);
+        renderLoadout();
+      });
+
       invWrapEl.appendChild(div);
     });
 
@@ -710,14 +759,15 @@
 
     const slots = loadoutState.equip[tab];
     const empty = slots.findIndex(x=>!x);
-    if(empty===-1) { overlay("슬롯이 가득 찼어"); return; }
+    if(empty===-1) { overlay('슬롯이 가득 찼어'); return; }
 
     const stack = inv[invIndex];
-    if(!stack || !stack.id) return; // 안전
+    if(!stack || !stack.id) return;
 
     const qty = Math.max(1, Number(stack.qty)||1);
+    const lv  = clamp(Math.round(Number(stack.lv)||0), 0, MAX_ENHANCE);
 
-    slots[empty] = { id:stack.id, name:stack.name, grade:stack.grade, patternId:stack.patternId||null };
+    slots[empty] = { id:stack.id, name:stack.name, grade:stack.grade, patternId:stack.patternId||null, lv };
 
     if(qty>1){
       stack.qty = qty - 1;
@@ -734,13 +784,75 @@
     if(slotIndex<0 || slotIndex>=slots.length) return;
     const item = slots[slotIndex];
     if(!item) return;
+
     slots[slotIndex]=null;
-    addToInventoryStack(tab, item);
+
+    // 강화레벨 유지
+    addToInventoryStack(tab, { ...item, lv: clamp(Math.round(Number(item.lv)||0),0,MAX_ENHANCE) });
     sortInventory(tab);
     saveLoadout();
   }
 
-  function drawMany(tab, n){
+    function enhanceFromInv(tab, invIndex){
+    normalizeInventory(tab);
+    const inv = loadoutState.inv[tab];
+    if(invIndex<0 || invIndex>=inv.length) return;
+
+    const st = inv[invIndex];
+    if(!st || !st.id) return;
+
+    const id = String(st.id);
+    const name = st.name;
+    const grade = st.grade || 'common';
+    const patternId = st.patternId || null;
+    const lv  = clamp(Math.round(Number(st.lv)||0), 0, MAX_ENHANCE);
+
+    if(lv >= MAX_ENHANCE){ overlay('최대 강화(+9)'); return; }
+
+    // (B) 같은 이름(=id) 아이템이 인벤토리에 총 2개 이상이면 강화 가능(레벨 상관 없음)
+    const total = totalQtyForId(tab, id);
+    if(total < 2){ overlay('같은 아이템 2개 필요'); return; }
+
+    // 1) 대상 스택에서 1개 소모
+    consumeOne(inv, invIndex);
+
+    // 2) 남아있는 같은 id 중 아무거나 1개 추가 소모 (가능하면 낮은 lv부터)
+    let idx2 = -1;
+    let bestLv = 1e9;
+    for(let i=0;i<inv.length;i++){
+      const it = inv[i];
+      if(!it || !it.id) continue;
+      if(String(it.id) !== id) continue;
+      const lvi = clamp(Math.round(Number(it.lv)||0),0,MAX_ENHANCE);
+      if(lvi < bestLv){ bestLv = lvi; idx2 = i; }
+    }
+    if(idx2 === -1){
+      // 이 케이스는 total>=2면 발생하면 안되지만, 안전망
+      overlay('강화 실패(재시도)');
+      return;
+    }
+    consumeOne(inv, idx2);
+
+    // 3) +1 생성
+    addToInventoryStack(tab, { id, name, grade, patternId, lv: lv+1 });
+    sortInventory(tab);
+    saveLoadout();
+    overlay('강화 성공: +' + (lv+1));
+  }
+
+  function consumeOne(inv, idx){
+    if(idx<0 || idx>=inv.length) return;
+    const st = inv[idx];
+    if(!st) return;
+    const qty = Math.max(1, Number(st.qty)||1);
+    if(qty>1){
+      st.qty = qty - 1;
+    }else{
+      inv.splice(idx, 1);
+    }
+  }
+
+function drawMany(tab, n){
     const count = Math.max(1, Number(n)||1);
     const tbl = gachaTableFor(tab);
 
@@ -759,6 +871,7 @@
         name: pick.name,
         grade: pick.grade || g,
         patternId: pick.patternId || null,
+        lv: 0,
       });
     }
 
@@ -924,7 +1037,9 @@
     state.patternQueue = buildPatternPlan(main, sub);
 
     state.shakeT = 0;
-    state.enemySpawnT = 0;
+    // 적 유닛이 안 나오는 이슈 방지: 시작 직후 1마리 스폰
+    state.enemySpawnT = enemySpawnInterval();
+    updateEnemySpawns(0);
 
     state.doomActive = (main===1);
     state.doomFired = false;
@@ -973,9 +1088,51 @@
     });
   }
 
-  function spawnEnemy(){
-    const e = { x:CFG.enemySpawnX, y:CFG.laneY, hp:200, maxHp:200, atk:16, rate:1.0, range:18, speed:62, cd:0 };
+  function spawnEnemy(overrides){
+    const base = { x:CFG.enemySpawnX, y:CFG.laneY, hp:200, maxHp:200, atk:16, rate:1.0, range:18, speed:62, cd:0 };
+    const e = { ...base, ...(overrides||{}) };
+    // maxHp 미지정시 hp와 동일
+    if(!(Number(e.maxHp)>0)) e.maxHp = e.hp;
     state.enemies.push(e);
+  }
+
+  function enemySpawnInterval(){
+    // 스테이지가 뒤로 갈수록 조금 더 자주
+    const base = CFG.enemySpawnEvery;
+    const m = Math.max(0, state.main-1);
+    const s = Math.max(0, state.sub-1);
+    let mult = 1 - (m*0.06) - (s*0.03);
+    if(state.sub===MIDBOSS_SUB_INDEX) mult *= 0.92;
+    return clamp(base*mult, 0.9, 3.2);
+  }
+
+  function updateEnemySpawns(dt){
+    if(!state.running) return;
+    state.enemySpawnT += dt;
+    const interval = enemySpawnInterval();
+
+    // 너무 몰리면(프레임 튐) 한번에 과도 스폰 방지
+    let guard = 0;
+    while(state.enemySpawnT >= interval && guard < 8){
+      state.enemySpawnT -= interval;
+      guard++;
+
+      const m = Math.max(0, state.main-1);
+      const s = Math.max(0, state.sub-1);
+      const scale = 1 + (m*0.18) + (s*0.06);
+
+      let hp = Math.round(200 * scale);
+      let atk = Math.round(16 * (1 + m*0.14 + s*0.04));
+      let speed = Math.round(62 + m*3 - s*1);
+
+      if(state.sub===MIDBOSS_SUB_INDEX){
+        hp = Math.round(hp * 1.7);
+        atk = Math.round(atk * 1.45);
+        speed = Math.max(50, speed - 8);
+      }
+
+      spawnEnemy({ hp, maxHp:hp, atk, speed });
+    }
   }
 
   function applyPattern(p){
@@ -1504,6 +1661,7 @@
       updateFX(dt);
       updatePatterns(dt);
       updateMana(dt);
+      updateEnemySpawns(dt);
       updateEntities(dt);
 
       // Stage 1: 적 본진 10% 미만이면 강제청산을 3초 예고 후 앞당김
@@ -1572,6 +1730,50 @@
     if(loadoutState.inv.equip.length !== 2) throw new Error("normalizeInventory failed to stack");
     const a = loadoutState.inv.equip.find(x=>x.id==="E_PROTECT");
     if(!a || a.qty !== 2) throw new Error("stack qty incorrect");
+
+    // NEW: enhancement stacks are separated by (id+lv) and 2 copies -> +1
+    loadoutState.inv.equip = [
+      {id:'E_PROTECT', name:'A', grade:'common', lv:0, qty:2},
+      {id:'E_PROTECT', name:'A', grade:'common', lv:1, qty:1},
+    ];
+    normalizeInventory('equip');
+    if(loadoutState.inv.equip.length !== 2) throw new Error('normalizeInventory should keep different lv separate');
+    // enhance lv0 stack (index 0 is lv0 in this setup)
+    enhanceFromInv('equip', 0);
+    normalizeInventory('equip');
+    const s0 = loadoutState.inv.equip.find(x=>x.id==='E_PROTECT' && (Number(x.lv)||0)===0);
+    if(s0) throw new Error('enhance should consume lv0 stack');
+    const s1 = loadoutState.inv.equip.find(x=>x.id==='E_PROTECT' && (Number(x.lv)||0)===1);
+    if(!s1 || Math.max(1,Number(s1.qty)||1) !== 2) throw new Error('enhance should add to lv1 stack');
+    // NEW: enhancement (B) - different lv stacks can be consumed together
+    loadoutState.inv.equip = [
+      {id:'E_PROTECT', name:'A', grade:'common', lv:0, qty:1},
+      {id:'E_PROTECT', name:'A', grade:'common', lv:3, qty:1},
+    ];
+    normalizeInventory('equip');
+    sortInventory('equip');
+    const idxLv3 = loadoutState.inv.equip.findIndex(x=>x.id==='E_PROTECT' && (Number(x.lv)||0)===3);
+    if(idxLv3 < 0) throw new Error('test setup failed: lv3 stack not found');
+    enhanceFromInv('equip', idxLv3);
+    normalizeInventory('equip');
+    const lv4 = loadoutState.inv.equip.find(x=>x.id==='E_PROTECT' && (Number(x.lv)||0)===4);
+    if(!lv4 || Math.max(1,Number(lv4.qty)||1) !== 1) throw new Error('B enhance should create lv4 x1');
+    const lv0 = loadoutState.inv.equip.find(x=>x.id==='E_PROTECT' && (Number(x.lv)||0)===0);
+    const lv3 = loadoutState.inv.equip.find(x=>x.id==='E_PROTECT' && (Number(x.lv)||0)===3);
+    if(lv0 || lv3) throw new Error('B enhance should consume lv0 and lv3');
+
+
+    // NEW: enemy spawning should occur when running
+    state.running = true;
+    state.main = 1; state.sub = 1;
+    state.enemies = [];
+    // 적 유닛이 안 나오는 이슈 방지: 시작 직후 1마리 스폰
+    state.enemySpawnT = enemySpawnInterval();
+    updateEnemySpawns(0);
+    updateEnemySpawns(CFG.enemySpawnEvery + 0.01);
+    if(state.enemies.length < 1) throw new Error('updateEnemySpawns did not spawn');
+    state.running = false;
+
 
     // NEW: myth pool must not be empty (was causing undefined.id crash)
     if(!Array.isArray(TOTEM_BY_GRADE.myth) || TOTEM_BY_GRADE.myth.length < 1){

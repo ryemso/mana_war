@@ -1,0 +1,152 @@
+--- /mnt/data/mana_war_update_v7/app.js	2026-01-16 13:05:47.805173651 +0000
++++ /mnt/data/mana_war_update_v8/app.js	2026-01-16 13:32:14.112931258 +0000
+@@ -358,6 +358,25 @@
+   // =========================
+   const MAX_ENHANCE = 9; // 최대 +9
+ 
++  function totalQtyForId(tab, id){
++    normalizeInventory(tab);
++    const inv = loadoutState.inv[tab];
++    const key = String(id);
++    let total = 0;
++    for(const it of (inv||[])){
++      if(!it || !it.id) continue;
++      if(String(it.id) === key){
++        total += maxQty(it.qty);
++      }
++    }
++    return total;
++  }
++
++  function maxQty(q){
++    return Math.max(1, Number(q)||1);
++  }
++
++
+   function getSortMode(tab){
+     const t = tab || loadoutState.tab;
+     const m = loadoutState.sortMode && loadoutState.sortMode[t];
+@@ -697,7 +716,7 @@
+       const div = document.createElement('div');
+       div.className = 'invItem';
+ 
+-      const canEnh = (Math.max(1, Number(it.qty)||1) >= 2) && (clamp(Math.round(Number(it.lv)||0),0,MAX_ENHANCE) < MAX_ENHANCE);
++      const canEnh = (totalQtyForId(tab, it.id) >= 2) && (clamp(Math.round(Number(it.lv)||0),0,MAX_ENHANCE) < MAX_ENHANCE);
+       const enhBtn = canEnh
+         ? '<button class="invBtn" data-action="enh" type="button">강화</button>'
+         : '<button class="invBtn" disabled type="button">강화</button>';
+@@ -778,28 +797,61 @@
+     normalizeInventory(tab);
+     const inv = loadoutState.inv[tab];
+     if(invIndex<0 || invIndex>=inv.length) return;
++
+     const st = inv[invIndex];
+     if(!st || !st.id) return;
+ 
+-    const qty = Math.max(1, Number(st.qty)||1);
++    const id = String(st.id);
++    const name = st.name;
++    const grade = st.grade || 'common';
++    const patternId = st.patternId || null;
+     const lv  = clamp(Math.round(Number(st.lv)||0), 0, MAX_ENHANCE);
+-    if(lv >= MAX_ENHANCE){ overlay('최대 강화(+9)'); return; }
+-    if(qty < 2){ overlay('같은 아이템 2개 필요'); return; }
+ 
+-    // 2개 소모 → 1개가 +1로 생성
+-    st.qty = qty - 2;
+-    const base = { id: st.id, name: st.name, grade: st.grade, patternId: st.patternId||null, lv: lv+1 };
++    if(lv >= MAX_ENHANCE){ overlay('최대 강화(+9)'); return; }
+ 
+-    if(st.qty <= 0){
+-      inv.splice(invIndex, 1);
++    // (B) 같은 이름(=id) 아이템이 인벤토리에 총 2개 이상이면 강화 가능(레벨 상관 없음)
++    const total = totalQtyForId(tab, id);
++    if(total < 2){ overlay('같은 아이템 2개 필요'); return; }
++
++    // 1) 대상 스택에서 1개 소모
++    consumeOne(inv, invIndex);
++
++    // 2) 남아있는 같은 id 중 아무거나 1개 추가 소모 (가능하면 낮은 lv부터)
++    let idx2 = -1;
++    let bestLv = 1e9;
++    for(let i=0;i<inv.length;i++){
++      const it = inv[i];
++      if(!it || !it.id) continue;
++      if(String(it.id) !== id) continue;
++      const lvi = clamp(Math.round(Number(it.lv)||0),0,MAX_ENHANCE);
++      if(lvi < bestLv){ bestLv = lvi; idx2 = i; }
++    }
++    if(idx2 === -1){
++      // 이 케이스는 total>=2면 발생하면 안되지만, 안전망
++      overlay('강화 실패(재시도)');
++      return;
+     }
++    consumeOne(inv, idx2);
+ 
+-    addToInventoryStack(tab, base);
++    // 3) +1 생성
++    addToInventoryStack(tab, { id, name, grade, patternId, lv: lv+1 });
+     sortInventory(tab);
+     saveLoadout();
+     overlay('강화 성공: +' + (lv+1));
+   }
+ 
++  function consumeOne(inv, idx){
++    if(idx<0 || idx>=inv.length) return;
++    const st = inv[idx];
++    if(!st) return;
++    const qty = Math.max(1, Number(st.qty)||1);
++    if(qty>1){
++      st.qty = qty - 1;
++    }else{
++      inv.splice(idx, 1);
++    }
++  }
++
+ function drawMany(tab, n){
+     const count = Math.max(1, Number(n)||1);
+     const tbl = gachaTableFor(tab);
+@@ -985,7 +1037,9 @@
+     state.patternQueue = buildPatternPlan(main, sub);
+ 
+     state.shakeT = 0;
+-    state.enemySpawnT = 0;
++    // 적 유닛이 안 나오는 이슈 방지: 시작 직후 1마리 스폰
++    state.enemySpawnT = enemySpawnInterval();
++    updateEnemySpawns(0);
+ 
+     state.doomActive = (main===1);
+     state.doomFired = false;
+@@ -1691,12 +1745,31 @@
+     if(s0) throw new Error('enhance should consume lv0 stack');
+     const s1 = loadoutState.inv.equip.find(x=>x.id==='E_PROTECT' && (Number(x.lv)||0)===1);
+     if(!s1 || Math.max(1,Number(s1.qty)||1) !== 2) throw new Error('enhance should add to lv1 stack');
++    // NEW: enhancement (B) - different lv stacks can be consumed together
++    loadoutState.inv.equip = [
++      {id:'E_PROTECT', name:'A', grade:'common', lv:0, qty:1},
++      {id:'E_PROTECT', name:'A', grade:'common', lv:3, qty:1},
++    ];
++    normalizeInventory('equip');
++    sortInventory('equip');
++    const idxLv3 = loadoutState.inv.equip.findIndex(x=>x.id==='E_PROTECT' && (Number(x.lv)||0)===3);
++    if(idxLv3 < 0) throw new Error('test setup failed: lv3 stack not found');
++    enhanceFromInv('equip', idxLv3);
++    normalizeInventory('equip');
++    const lv4 = loadoutState.inv.equip.find(x=>x.id==='E_PROTECT' && (Number(x.lv)||0)===4);
++    if(!lv4 || Math.max(1,Number(lv4.qty)||1) !== 1) throw new Error('B enhance should create lv4 x1');
++    const lv0 = loadoutState.inv.equip.find(x=>x.id==='E_PROTECT' && (Number(x.lv)||0)===0);
++    const lv3 = loadoutState.inv.equip.find(x=>x.id==='E_PROTECT' && (Number(x.lv)||0)===3);
++    if(lv0 || lv3) throw new Error('B enhance should consume lv0 and lv3');
++
+ 
+     // NEW: enemy spawning should occur when running
+     state.running = true;
+     state.main = 1; state.sub = 1;
+     state.enemies = [];
+-    state.enemySpawnT = 0;
++    // 적 유닛이 안 나오는 이슈 방지: 시작 직후 1마리 스폰
++    state.enemySpawnT = enemySpawnInterval();
++    updateEnemySpawns(0);
+     updateEnemySpawns(CFG.enemySpawnEvery + 0.01);
+     if(state.enemies.length < 1) throw new Error('updateEnemySpawns did not spawn');
+     state.running = false;

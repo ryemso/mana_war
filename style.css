@@ -132,8 +132,8 @@
     .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
     @media (max-width:860px){.grid2{grid-template-columns:1fr}}
     /* 장착 슬롯: (요구) 탭당 3슬롯이 한 줄에 고정 */
-    .slotRow{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
-        .slot{min-width:0;border-radius:12px;border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.06);padding:10px 10px;cursor:pointer;display:flex;align-items:center;gap:10px}
+    .slotRow{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;width:100%}
+        .slot{min-width:0;width:100%;border-radius:12px;border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.06);padding:10px 10px;cursor:pointer;display:flex;align-items:center;gap:10px}
     .slot b{font-weight:1000}
     .slot .name{font-weight:1000;white-space:normal;overflow-wrap:anywhere;line-height:1.15}
 
@@ -141,7 +141,15 @@
 
     .sel{appearance:none;-webkit-appearance:none;-moz-appearance:none;background:rgba(255,255,255,.06);color:var(--ink);border:1px solid rgba(255,255,255,.18);border-radius:10px;padding:6px 10px;font-weight:900;outline:none}
     .inv{display:flex;gap:10px;flex-wrap:wrap;align-content:flex-start}
-    .invItem{min-width:220px;border-radius:12px;border:1px solid rgba(255,255,255,.14);background:rgba(0,0,0,.14);padding:10px 10px;cursor:pointer;display:flex;align-items:center;gap:10px}
+    .invItem{min-width:220px;border-radius:12px;border:1px solid rgba(255,255,255,.14);background:rgba(0,0,0,.14);padding:10px 10px;cursor:pointer;display:flex;align-items:center;gap:10px;justify-content:space-between}
+
+    .invLeft{display:flex;align-items:center;gap:10px;min-width:0;flex:1}
+    .invBtns{display:flex;flex-direction:column;gap:6px;flex:0 0 auto}
+    .invBtn{background:rgba(255,255,255,.06);color:var(--ink);border:1px solid rgba(255,255,255,.18);border-radius:10px;padding:6px 10px;font-weight:1000;cursor:pointer}
+    .invBtn:disabled{opacity:.45;cursor:not-allowed}
+
+    .enhLv{display:inline-flex;align-items:center;font-size:11px;font-weight:1000;padding:2px 6px;border-radius:999px;border:1px solid rgba(255,255,255,.18);background:rgba(0,0,0,.22);opacity:.95}
+
 
     .small{opacity:.78;font-size:12px;line-height:1.4}
 
