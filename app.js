@@ -12,8 +12,28 @@
     .replace(/\"/g,"&quot;")
     .replace(/'/g,"&#039;");
 
-  function showModal(m){ m.classList.add("show"); m.setAttribute("aria-hidden","false"); }
-  function hideModal(m){ m.classList.remove("show"); m.setAttribute("aria-hidden","true"); }
+  // Modal pause (게임 진행 중 스테이지/장비/How to 열면 일시정지)
+  let pausedByModal = false;
+  function updateModalPause(){
+    try{
+      pausedByModal = !!document.querySelector('.modalBack.show[data-pauses="true"]');
+    }catch(_e){
+      pausedByModal = false;
+    }
+  }
+
+  function showModal(m){
+    if(!m) return;
+    m.classList.add("show");
+    m.setAttribute("aria-hidden","false");
+    updateModalPause();
+  }
+  function hideModal(m){
+    if(!m) return;
+    m.classList.remove("show");
+    m.setAttribute("aria-hidden","true");
+    updateModalPause();
+  }
 
   // =========================
   // Config
@@ -490,6 +510,8 @@
   const nextPatternTextEl = el("nextPatternText");
   const doomChip = el("doomChip");
   const doomTextEl = el("doomText");
+  const doomLabelEl = el("doomLabel");
+  const doomUnitEl = el("doomUnit");
   const scoreEl = el("score");
   const coinsEl = el("coins");
   const basePEl = el("baseP");
@@ -764,7 +786,8 @@
     for(let m=1;m<=MAIN_STAGE_COUNT;m++){
       const master = masterFor(m);
       const div = document.createElement("div");
-      div.className = "stageBtn" + (m===selectedMain?" active":"");
+      const anyCleared = Array.from({length:SUB_STAGE_COUNT}, (_,i)=> getBestProgress(stageCode(m, i+1)) >= 30).some(Boolean);
+      div.className = "stageBtn" + (m===selectedMain?" active":"") + (anyCleared?" cleared":"");
       div.innerHTML = '<div class="t">STAGE '+m+' <span style="opacity:.75">·</span> <span style="opacity:.9">'+escapeHtml(master.bossName)+'</span></div>'
         + '<div class="d">'+escapeHtml(master.gimmick)+'</div>';
       div.addEventListener("click", ()=>{ selectedMain=m; buildStageUI(); });
@@ -778,7 +801,8 @@
       const code = stageCode(selectedMain, s);
       const btn = document.createElement("button");
       btn.type = "button";
-      btn.className = "subBtn" + (s===MIDBOSS_SUB_INDEX?" midboss":"");
+      const cleared = (getBestProgress(code) >= 30);
+      btn.className = "subBtn" + (s===MIDBOSS_SUB_INDEX?" midboss":"") + (cleared?" cleared":"");
       btn.innerHTML = '<div style="font-weight:1000;font-size:16px;">'+s+'</div>'
         + '<div style="font-size:11px;opacity:.85;">'+(s===MIDBOSS_SUB_INDEX?"B":"")+'</div>';
       btn.addEventListener("click", ()=>{
@@ -1020,6 +1044,9 @@
   }
 
   function updateEntities(dt){
+    const units = state.units;
+    const enemies = state.enemies;
+
     // 충돌/추월 방지용 간격
     const BODY_R = 14;
     const BLOCK_DIST = BODY_R * 2 + 2;
@@ -1027,13 +1054,14 @@
     const enemyBaseEdge = state.baseE.x - state.baseE.w/2;
     const playerBaseEdge = state.baseP.x + state.baseP.w/2;
 
-    // Units
+    // --- 아군 ---
     for(const u of units){
-      // nearest enemy in front
+      // 타겟: 가장 가까운 적(가능하면 전방), 없으면 가장 가까운 적(후방 포함)
       let target = null;
       let best = Infinity;
       let signed = 0;
 
+      // 1) 전방 우선
       for(const e of enemies){
         const sdx = e.x - u.x;
         if(sdx >= 0 && sdx < best){
@@ -1042,12 +1070,12 @@
           target = e;
         }
       }
-      // overlap rescue (when already crossed due to dt)
+      // 2) 후방 포함(이미 추월해버린 경우)
       if(!target){
         for(const e of enemies){
           const sdx = e.x - u.x;
           const dist = Math.abs(sdx);
-          if(dist < BLOCK_DIST && dist < best){
+          if(dist < best){
             best = dist;
             signed = sdx;
             target = e;
@@ -1055,11 +1083,19 @@
         }
       }
 
+      // 공격 쿨다운 처리
+      u.cd = (typeof u.cd === "number") ? u.cd : 0;
+      u.cd -= dt;
+
       if(!target){
+        // 적이 없으면 본진으로
         const dxBase = enemyBaseEdge - u.x;
         if(dxBase <= u.range){
-          state.baseE.hp = Math.max(0, state.baseE.hp - u.atk);
-          state.dmgToEnemyBase += u.atk;
+          if(u.cd <= 0){
+            state.baseE.hp = Math.max(0, state.baseE.hp - u.atk);
+            state.dmgToEnemyBase += u.atk;
+            u.cd = 1 / Math.max(0.1, u.rate||1);
+          }
         }else{
           const nextX = u.x + u.speed*dt;
           u.x = Math.min(nextX, enemyBaseEdge - (BODY_R + 2));
@@ -1067,25 +1103,29 @@
       }else{
         const dist = Math.abs(target.x - u.x);
         if(dist <= u.range){
-          target.hp -= u.atk;
+          if(u.cd <= 0){
+            target.hp -= u.atk;
+            u.cd = 1 / Math.max(0.1, u.rate||1);
+          }
         }else{
           const nextX = u.x + u.speed*dt;
-          if(signed >= 0){
-            u.x = Math.min(nextX, target.x - BLOCK_DIST);
-          }else{
-            // should be rare; still move forward
-            u.x = nextX;
-          }
+          // target이 전방/후방 어디든, 항상 stop line을 강제해 추월을 원천 차단
+          const stopX = target.x - BLOCK_DIST;
+          u.x = Math.min(nextX, stopX);
         }
       }
+
+      // 베이스 경계
+      u.x = clamp(u.x, playerBaseEdge + (BODY_R + 2), enemyBaseEdge - (BODY_R + 2));
     }
 
-    // Enemies
+    // --- 적군 ---
     for(const e of enemies){
       let target = null;
       let best = Infinity;
       let signed = 0;
 
+      // 1) 전방(왼쪽) 우선: e.x - u.x >= 0
       for(const u of units){
         const sdx = e.x - u.x;
         if(sdx >= 0 && sdx < best){
@@ -1094,12 +1134,12 @@
           target = u;
         }
       }
-      // overlap rescue
+      // 2) 후방 포함(이미 추월해버린 경우)
       if(!target){
         for(const u of units){
           const sdx = e.x - u.x;
           const dist = Math.abs(sdx);
-          if(dist < BLOCK_DIST && dist < best){
+          if(dist < best){
             best = dist;
             signed = sdx;
             target = u;
@@ -1107,10 +1147,16 @@
         }
       }
 
+      e.cd = (typeof e.cd === "number") ? e.cd : 0;
+      e.cd -= dt;
+
       if(!target){
         const dxBase = e.x - playerBaseEdge;
         if(dxBase <= e.range + 20){
-          state.baseP.hp = Math.max(0, state.baseP.hp - e.atk);
+          if(e.cd <= 0){
+            state.baseP.hp = Math.max(0, state.baseP.hp - e.atk);
+            e.cd = 1 / Math.max(0.1, e.rate||1);
+          }
         }else{
           const nextX = e.x - e.speed*dt;
           e.x = Math.max(nextX, playerBaseEdge + (BODY_R + 2));
@@ -1118,19 +1164,21 @@
       }else{
         const dist = Math.abs(e.x - target.x);
         if(dist <= e.range){
-          target.hp -= e.atk;
+          if(e.cd <= 0){
+            target.hp -= e.atk;
+            e.cd = 1 / Math.max(0.1, e.rate||1);
+          }
         }else{
           const nextX = e.x - e.speed*dt;
-          if(signed >= 0){
-            e.x = Math.max(nextX, target.x + BLOCK_DIST);
-          }else{
-            e.x = nextX;
-          }
+          const stopX = target.x + BLOCK_DIST;
+          e.x = Math.max(nextX, stopX);
         }
       }
+
+      e.x = clamp(e.x, playerBaseEdge + (BODY_R + 2), enemyBaseEdge - (BODY_R + 2));
     }
 
-    // cleanup
+    // --- cleanup & rewards ---
     for(let i=units.length-1;i>=0;i--){
       if(units[i].hp<=0) units.splice(i,1);
     }
@@ -1139,7 +1187,57 @@
         enemies.splice(i,1);
         state.kills += 1;
         state.score += 120;
-        state.coins += 1;
+        state.coins += 1; // 킬 보상
+      }
+    }
+
+    // --- HARD NO-PASS SOLVER ---
+    // (4) 아군이 깊숙히 들어가 적이 무시하고 지나가는 현상 완전 차단
+    if(units.length && enemies.length){
+      // 정렬: 아군은 오른쪽이 앞, 적군은 왼쪽이 앞
+      units.sort((a,b)=>a.x-b.x);
+      enemies.sort((a,b)=>a.x-b.x);
+
+      // 팀 내부 겹침(간격 유지)
+      for(let i=units.length-2;i>=0;i--){
+        if(units[i].x > units[i+1].x - BLOCK_DIST){
+          units[i].x = units[i+1].x - BLOCK_DIST;
+        }
+      }
+      for(let i=1;i<enemies.length;i++){
+        if(enemies[i].x < enemies[i-1].x + BLOCK_DIST){
+          enemies[i].x = enemies[i-1].x + BLOCK_DIST;
+        }
+      }
+
+      // 양팀 경계(절대 추월 금지): 아군 선두 <= 적군 선두 - BLOCK_DIST
+      const uFront = units[units.length-1];
+      const eFront = enemies[0];
+      if(uFront.x > eFront.x - BLOCK_DIST){
+        uFront.x = eFront.x - BLOCK_DIST;
+      }
+      if(eFront.x < uFront.x + BLOCK_DIST){
+        eFront.x = uFront.x + BLOCK_DIST;
+      }
+
+      // 경계 수정 후 다시 내부 정리
+      for(let i=units.length-2;i>=0;i--){
+        if(units[i].x > units[i+1].x - BLOCK_DIST){
+          units[i].x = units[i+1].x - BLOCK_DIST;
+        }
+      }
+      for(let i=1;i<enemies.length;i++){
+        if(enemies[i].x < enemies[i-1].x + BLOCK_DIST){
+          enemies[i].x = enemies[i-1].x + BLOCK_DIST;
+        }
+      }
+
+      // 베이스 경계 재클램프
+      for(const u of units){
+        u.x = clamp(u.x, playerBaseEdge + (BODY_R + 2), enemyBaseEdge - (BODY_R + 2));
+      }
+      for(const e of enemies){
+        e.x = clamp(e.x, playerBaseEdge + (BODY_R + 2), enemyBaseEdge - (BODY_R + 2));
       }
     }
   }
@@ -1165,7 +1263,7 @@
     if(!state.doomActive || state.doomFired) return;
     if(!state.baseE || !(state.baseE.maxHp>0)) return;
     const ratio = state.baseE.hp / state.baseE.maxHp;
-    if(ratio >= 0.10) return;
+    if(ratio > 0.10) return;
 
     const curAt = getNextDoomAt();
     const desiredAt = state.play + 3; // 3초 예고 후 발동
@@ -1185,9 +1283,18 @@
     fxEl.textContent = String(state.fx);
 
     if(state.doomActive){
-      doomTextEl.textContent = fmt1(Math.max(0, getNextDoomAt() - state.play));
+      const remain = Math.max(0, getNextDoomAt() - state.play);
+      doomTextEl.textContent = fmt1(remain);
+
+      // (B) 15% 이하: doomChip 자체를 "강제청산 경고"로 변경
+      const ratio = (state.baseE && state.baseE.maxHp>0) ? (state.baseE.hp / state.baseE.maxHp) : 1;
+      const warn = (!state.doomFired) && (ratio <= 0.15);
+      doomLabelEl.textContent = warn ? "강제청산 경고" : "강제청산까지";
+      doomUnitEl.textContent = "s";
+      doomChip.classList.toggle("danger", warn);
       doomChip.style.display = "flex";
     }else{
+      doomChip.classList.remove("danger");
       doomChip.style.display = "none";
     }
 
@@ -1382,8 +1489,15 @@
   function tick(ts){
     const dt = Math.min(0.05, (ts-lastTs)/1000);
     lastTs = ts;
-
     if(state.running){
+      // modal이 열려 있으면 게임이 완전히 멈춤(시간/패턴/스폰/이동 모두 정지)
+      if(pausedByModal){
+        updateHUD();
+        draw();
+        requestAnimationFrame(tick);
+        return;
+      }
+
       state.play += dt;
       state.timeLeft = Math.max(0, CFG.durationSec - state.play);
 
@@ -1463,6 +1577,17 @@
     if(!Array.isArray(TOTEM_BY_GRADE.myth) || TOTEM_BY_GRADE.myth.length < 1){
       throw new Error("TOTEM_BY_GRADE.myth must have at least 1 item");
     }
+
+    // NEW: doom schedule inclusive (ratio <= 0.10)
+    state.doomActive = true;
+    state.doomFired = false;
+    state.play = 50;
+    state.baseE.maxHp = 100;
+    state.baseE.hp = 10; // 10% exactly
+    state.patternQueue = [{ at: 105, name: "강제청산", type:"doom" }];
+    maybeScheduleDoomFromEnemyHp();
+    const da = getNextDoomAt();
+    if(da > 53.001) throw new Error("doom schedule should trigger at <=10% (expected <=53)");
 
     // NEW: pickRandomItem must always return an item even for missing grade
     const p1 = pickRandomItem("totem", "relic");

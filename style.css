@@ -25,6 +25,8 @@
     .chip{background:#0f1630;border:1px solid #27315d;border-radius:999px;padding:6px 10px;display:flex;gap:8px;align-items:center;font-size:13px}
     .chip b{font-weight:1000}
     .warn{background:rgba(255,71,71,.12);border-color:rgba(255,71,71,.55)}
+    .chip.warn.danger{background:rgba(255,45,45,.18);border-color:rgba(255,45,45,.70);animation:blinkDanger .65s infinite alternate}
+    @keyframes blinkDanger{from{filter:brightness(1)}to{filter:brightness(1.35)}}
 
     .progressWrap{margin-top:10px;background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:10px 12px;display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap}
     .progressLine{flex:1;min-width:420px;display:flex;gap:10px;align-items:center}
@@ -78,10 +80,12 @@
     .subGrid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:10px}
     .stageBtn{border-radius:12px;border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.06);padding:10px 10px;cursor:pointer;text-align:left;display:flex;flex-direction:column;gap:6px;min-height:74px}
     .stageBtn.active{background:rgba(105,210,255,.12);border-color:rgba(105,210,255,.40)}
+    .stageBtn.cleared{background:rgba(105,210,255,.16);border-color:rgba(105,210,255,.62)}
     .stageBtn .t{font-weight:1000;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
     .stageBtn .d{font-size:12px;opacity:.82;line-height:1.35}
     .subBtn{border-radius:12px;border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.06);padding:10px 10px;cursor:pointer;text-align:center;display:flex;flex-direction:column;gap:4px;min-height:74px}
     .subBtn.midboss{background:rgba(255,220,110,.10);border-color:rgba(255,220,110,.30)}
+    .subBtn.cleared{background:rgba(105,210,255,.16);border-color:rgba(105,210,255,.62)}
 
     .actions{margin-top:12px;display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap}
 
@@ -129,9 +133,9 @@
     @media (max-width:860px){.grid2{grid-template-columns:1fr}}
     /* 장착 슬롯: (요구) 탭당 3슬롯이 한 줄에 고정 */
     .slotRow{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
-    @media (max-width:720px){.slotRow{grid-template-columns:1fr}}
-    .slot{min-width:0;border-radius:12px;border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.06);padding:10px 10px;cursor:pointer;display:flex;align-items:center;gap:10px}
+        .slot{min-width:0;border-radius:12px;border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.06);padding:10px 10px;cursor:pointer;display:flex;align-items:center;gap:10px}
     .slot b{font-weight:1000}
+    .slot .name{font-weight:1000;white-space:normal;overflow-wrap:anywhere;line-height:1.15}
 
     .invScroll{max-height:320px;overflow-y:auto;overflow-x:hidden;padding-right:6px}
 

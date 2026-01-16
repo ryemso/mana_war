@@ -19,7 +19,7 @@
         <div class="chip">📛 보스 <b id="bossName">-</b></div>
         <div class="chip">⚠️ 현재 패턴 <b id="patternText">-</b></div>
         <div class="chip">⏳ 다음 패턴 <b id="nextPatternText">-</b></div>
-        <div class="chip warn" id="doomChip" style="display:none;">💀 강제청산까지 <b id="doomText">-</b>s</div>
+        <div class="chip warn" id="doomChip" style="display:none;">💀 <span id="doomLabel">강제청산까지</span> <b id="doomText">-</b><span id="doomUnit">s</span></div>
       </div>
       <div class="right">
         <div class="chip">🧾 점수 <b id="score">0</b></div>
@@ -81,7 +81,7 @@
   </div>
 
   <!-- How To -->
-  <div class="modalBack" id="howModal" aria-hidden="true">
+  <div class="modalBack" id="howModal" data-pauses="true" aria-hidden="true">
     <div class="modalPanel titlePanel" role="dialog" aria-modal="true">
       <div class="badge">📖 HOW TO PLAY</div>
       <div class="subTitle" style="text-align:left;max-width:720px;margin:14px auto 0;">
@@ -121,7 +121,7 @@
   </div>
 
   <!-- Stage Select -->
-  <div class="modalBack" id="stageModal" aria-hidden="true">
+  <div class="modalBack" id="stageModal" data-pauses="true" aria-hidden="true">
     <div class="modalPanel" role="dialog" aria-modal="true">
       <div class="stageHeader">
         <div>
@@ -155,7 +155,7 @@
   </div>
 
   <!-- Loadout -->
-  <div class="modalBack" id="loadoutModal" aria-hidden="true">
+  <div class="modalBack" id="loadoutModal" data-pauses="true" aria-hidden="true">
     <div class="modalPanel" role="dialog" aria-modal="true">
       <div class="loadoutTop">
         <div>
@@ -210,7 +210,7 @@
   </div>
 
   <!-- End -->
-  <div class="modalBack" id="endModal" aria-hidden="true">
+  <div class="modalBack" id="endModal" data-pauses="true" aria-hidden="true">
     <div class="modalPanel endPanel" role="dialog" aria-modal="true">
       <div class="endTop">
         <div class="stageBadge2"><div class="code" id="endStage">1-01</div><div class="lv">STAGE</div></div>
