@@ -1,0 +1,80 @@
+--- app.js
++++ app.js
+@@ -911,6 +911,14 @@
+     return (getBestProgress(req) >= 30);
+
+   }
+
+ 
+
++  function unitCost(u){
+
++    // 환율( state.fx / 1000 )에 따라 유닛 소환 비용 변동
+
++    const mul = (state.fx || 1000) / 1000;
+
++    // 비용은 정수. 환율이 오르면 체감되도록 올림(ceil) 처리.
+
++    return Math.max(1, Math.ceil((u.cost || 0) * mul));
+
++  }
+
++
+
++
+
+   function buildCards(){
+
+     cardsWrap.innerHTML = "";
+
+     UNIT_DB.forEach((u, idx)=>{
+
+@@ -1058,8 +1066,9 @@
+ 
+
+   function spawnUnit(u){
+
+     if(!state.running) return;
+
+-    if(state.mana < u.cost){ overlay("마나 부족"); return; }
+
+-    state.mana -= u.cost;
+
++    const cost = unitCost(u);
+
++    if(state.mana < cost){ overlay("마나 부족"); return; }
+
++    state.mana -= cost;
+
+     state.units.push({
+
+       name:u.name,
+
+       x:CFG.playerSpawnX,
+
+@@ -1160,10 +1169,13 @@
+ 
+
+     if(state.fxT >= CFG.fxChangeEverySec){
+
+       state.fxT = 0;
+
++      const prevFx = state.fx;
+
+       state.fx = state.fxNext;
+
+       const r = Math.random();
+
+       state.fxNext = master.fxMin + Math.round(r*(master.fxMax-master.fxMin));
+
+       overlay("환율 변동");
+
++      // 환율 변동 시 카드 비용 UI도 갱신
+
++      if(prevFx !== state.fx) buildCards();
+
+     }
+
+ 
+
+     const mul = state.fx / 1000;
