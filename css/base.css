@@ -1,0 +1,26 @@
+*{box-sizing:border-box}
+    body{margin:0;background:var(--bg);color:var(--ink);display:flex;justify-content:center}
+    .wrap{width:min(1100px,96vw);margin:14px 0 18px}
+
+    .hud{display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:space-between;background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:10px 12px}
+    .hud .left,.hud .right{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+    .chip{background:#0f1630;border:1px solid #27315d;border-radius:999px;padding:6px 10px;display:flex;gap:8px;align-items:center;font-size:13px}
+    .chip b{font-weight:1000}
+    .warn{background:rgba(255,71,71,.12);border-color:rgba(255,71,71,.55)}
+
+    .progressWrap{margin-top:10px;background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:10px 12px;display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+    .progressLine{flex:1;min-width:420px;display:flex;gap:10px;align-items:center}
+    .barOuter{flex:1;height:12px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.14);border-radius:999px;overflow:hidden}
+    .barInner{height:100%;width:0%;background:rgba(255,255,255,.85)}
+
+    canvas{width:100%;height:auto;background:linear-gradient(180deg,#0b1020 0%,#0b1020 60%,#0a0f1d 100%);border:1px solid var(--border);border-radius:14px;display:block;margin-top:10px}
+
+    .bar{margin-top:10px;background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:10px 12px;display:flex;gap:10px;flex-wrap:wrap;align-items:flex-start;justify-content:space-between}
+    .cards{display:flex;gap:10px;flex-wrap:wrap}
+    button.card{background:#0f1630;color:var(--ink);border:1px solid #27315d;border-radius:12px;padding:10px 12px;min-width:210px;text-align:left;cursor:pointer}
+    button.card:disabled{opacity:.45;cursor:not-allowed}
+    .card .name{font-weight:1000;font-size:15px;margin-bottom:4px}
+    .card .meta{font-size:13px;opacity:.9;display:flex;gap:10px;flex-wrap:wrap}
+
+    .hint{font-size:13px;opacity:.85;max-width:460px;line-height:1.45}
+    .kbd{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;background:#0f1630;border:1px solid #27315d;padding:1px 6px;border-radius:6px}

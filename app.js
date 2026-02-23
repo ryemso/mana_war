@@ -12,28 +12,8 @@
     .replace(/\"/g,"&quot;")
     .replace(/'/g,"&#039;");
 
-  // Modal pause (게임 진행 중 스테이지/장비/How to 열면 일시정지)
-  let pausedByModal = false;
-  function updateModalPause(){
-    try{
-      pausedByModal = !!document.querySelector('.modalBack.show[data-pauses="true"]');
-    }catch(_e){
-      pausedByModal = false;
-    }
-  }
-
-  function showModal(m){
-    if(!m) return;
-    m.classList.add("show");
-    m.setAttribute("aria-hidden","false");
-    updateModalPause();
-  }
-  function hideModal(m){
-    if(!m) return;
-    m.classList.remove("show");
-    m.setAttribute("aria-hidden","true");
-    updateModalPause();
-  }
+  function showModal(m){ m.classList.add("show"); m.setAttribute("aria-hidden","false"); }
+  function hideModal(m){ m.classList.remove("show"); m.setAttribute("aria-hidden","true"); }
 
   // =========================
   // Config
@@ -356,27 +336,6 @@
   // =========================
   // Inventory helpers
   // =========================
-  const MAX_ENHANCE = 9; // 최대 +9
-
-  function totalQtyForId(tab, id){
-    normalizeInventory(tab);
-    const inv = loadoutState.inv[tab];
-    const key = String(id);
-    let total = 0;
-    for(const it of (inv||[])){
-      if(!it || !it.id) continue;
-      if(String(it.id) === key){
-        total += maxQty(it.qty);
-      }
-    }
-    return total;
-  }
-
-  function maxQty(q){
-    return Math.max(1, Number(q)||1);
-  }
-
-
   function getSortMode(tab){
     const t = tab || loadoutState.tab;
     const m = loadoutState.sortMode && loadoutState.sortMode[t];
@@ -396,38 +355,34 @@
     const inv = loadoutState.inv[tab];
     if(!Array.isArray(inv) || inv.length===0) return;
 
-    // v7: 강화 레벨(lv)에 따라 같은 이름이라도 (id+lv)로 스택 분리
-    const byKey = new Map();
+    const byId = new Map();
     for(const it of inv){
       if(!it || !it.id) continue;
-      const lv = clamp(Math.round(Number(it.lv)||0), 0, MAX_ENHANCE);
-      const key = String(it.id) + '::' + String(lv);
+      const key = String(it.id);
       const qty = Math.max(1, Number(it.qty)||1);
-      const g = String(it.grade||'common');
+      const g = String(it.grade||"common");
 
-      if(!byKey.has(key)) {
-        byKey.set(key, { id: it.id, name: it.name, grade: g, patternId: it.patternId||null, lv, qty });
-      } else {
-        const cur = byKey.get(key);
+      if(!byId.has(key)){
+        byId.set(key, { id: it.id, name: it.name, grade: g, patternId: it.patternId||null, qty });
+      }else{
+        const cur = byId.get(key);
         cur.qty += qty;
       }
     }
-    loadoutState.inv[tab] = Array.from(byKey.values());
+    loadoutState.inv[tab] = Array.from(byId.values());
   }
 
   function addToInventoryStack(tab, item){
     if(!item || !item.id) return;
     normalizeInventory(tab);
     const inv = loadoutState.inv[tab];
+    const key = String(item.id);
 
-    const lv = clamp(Math.round(Number(item.lv)||0), 0, MAX_ENHANCE);
-    const keyId = String(item.id);
-
-    const found = inv.find(x=>x && String(x.id)===keyId && clamp(Math.round(Number(x.lv)||0),0,MAX_ENHANCE)===lv);
+    const found = inv.find(x=>String(x.id)===key);
     if(found){
       found.qty = Math.max(1, Number(found.qty)||1) + 1;
     }else{
-      inv.push({ id:item.id, name:item.name, grade:item.grade||'common', patternId:item.patternId||null, lv, qty:1 });
+      inv.push({ id:item.id, name:item.name, grade:item.grade||"common", patternId:item.patternId||null, qty:1 });
     }
   }
 
@@ -443,26 +398,21 @@
       const qb = Math.max(1, Number(b?.qty)||1);
       const ra = gradeRank(a?.grade);
       const rb = gradeRank(b?.grade);
-      const la = clamp(Math.round(Number(a?.lv)||0),0,MAX_ENHANCE);
-      const lb = clamp(Math.round(Number(b?.lv)||0),0,MAX_ENHANCE);
 
-      if(mode === 'qty_asc'){
+      if(mode === "qty_asc"){
         if(qa !== qb) return qa - qb;
         if(rb !== ra) return rb - ra;
-        if(lb !== la) return lb - la;
-      }else if(mode === 'qty_desc'){
+      }else if(mode === "qty_desc"){
         if(qa !== qb) return qb - qa;
         if(rb !== ra) return rb - ra;
-        if(lb !== la) return lb - la;
       }else{
         if(rb !== ra) return rb - ra;
-        if(lb !== la) return lb - la;
         if(qa !== qb) return qb - qa;
       }
 
-      const na = String(a?.name || a?.id || '');
-      const nb = String(b?.name || b?.id || '');
-      return na.localeCompare(nb, 'ko');
+      const na = String(a?.name || a?.id || "");
+      const nb = String(b?.name || b?.id || "");
+      return na.localeCompare(nb, "ko");
     });
   }
 
@@ -540,8 +490,6 @@
   const nextPatternTextEl = el("nextPatternText");
   const doomChip = el("doomChip");
   const doomTextEl = el("doomText");
-  const doomLabelEl = el("doomLabel");
-  const doomUnitEl = el("doomUnit");
   const scoreEl = el("score");
   const coinsEl = el("coins");
   const basePEl = el("baseP");
@@ -632,29 +580,28 @@
   }
 
   function slotInner(tab, item, isSlot){
-    if(!item) return '<b>빈 슬롯</b><span style="opacity:.7">('+(tab==='equip'?'장비':'토템')+')</span>';
-    const gk = item.grade || 'common';
+    if(!item) return "<b>빈 슬롯</b><span style=\"opacity:.7\">("+(tab==="equip"?"장비":"토템")+")</span>";
+    const gk = item.grade || "common";
     const cls = gradeCssClass(gk);
     const tag = '<span class="gradeTag '+cls+'">'+gradeLabel(gk)+'</span>';
 
     const qty = Math.max(1, Number(item.qty)||1);
-    const lv = clamp(Math.round(Number(item.lv)||0), 0, MAX_ENHANCE);
+    const qtyText = (!isSlot)
+      ? ' <span style="opacity:.9;font-weight:1000;">x'+qty+'</span>'
+      : '';
 
-    const qtyText = (!isSlot) ? ' <span style="opacity:.9;font-weight:1000;">x'+qty+'</span>' : '';
-    const lvText  = (lv>0) ? ' <span class="enhLv">+'+lv+'</span>' : '';
+    const name = '<span class="itemName '+cls+'">'+escapeHtml(item.name||item.id)+'</span>' + qtyText;
 
-    const name = '<span class="itemName '+cls+'">'+escapeHtml(item.name||item.id)+'</span>' + lvText + qtyText;
-
-    let icon = '';
-    if(tab==='totem'){
-      icon = svgForPattern(item.patternId || 'SYM_TRI');
+    let icon = "";
+    if(tab==="totem"){
+      icon = svgForPattern(item.patternId || "SYM_TRI");
     }else{
       icon = '<div class="miniSvg" style="display:grid;place-items:center;font-weight:1000;">🧿</div>';
     }
 
-    return icon + '<div style="display:flex;flex-direction:column;gap:4px;min-width:0;">'
+    return icon + '<div style="display:flex;flex-direction:column;gap:4px;">'
       + '<div class="nameLine">'+tag+name+'</div>'
-      + '<div class="small" style="opacity:.72;">'+(isSlot?'슬롯':'인벤')+'</div>'
+      + '<div class="small" style="opacity:.72;">'+(isSlot?"슬롯":"인벤")+'</div>'
       + '</div>';
   }
 
@@ -709,34 +656,16 @@
       slotRowEl.appendChild(div);
     });
 
-    invWrapEl.innerHTML = '';
+    invWrapEl.innerHTML = "";
     const inv = loadoutState.inv[tab];
     inv.forEach((it, idx)=>{
+      // (안전) undefined가 섞여있으면 무시
       if(!it || !it.id) return;
-      const div = document.createElement('div');
-      div.className = 'invItem';
-
-      const canEnh = (totalQtyForId(tab, it.id) >= 2) && (clamp(Math.round(Number(it.lv)||0),0,MAX_ENHANCE) < MAX_ENHANCE);
-      const enhBtn = canEnh
-        ? '<button class="invBtn" data-action="enh" type="button">강화</button>'
-        : '<button class="invBtn" disabled type="button">강화</button>';
-
-      div.innerHTML = '<div class="invLeft">'+slotInner(tab, it, false)+'</div>'
-        + '<div class="invBtns">'+ enhBtn + '</div>';
-
-      div.title = '클릭하면 장착';
-      div.addEventListener('click', (ev)=>{
-        const btn = ev.target && ev.target.closest ? ev.target.closest('button[data-action]') : null;
-        if(btn && btn.dataset.action==='enh'){
-          ev.stopPropagation();
-          enhanceFromInv(tab, idx);
-          renderLoadout();
-          return;
-        }
-        equipFromInv(tab, idx);
-        renderLoadout();
-      });
-
+      const div = document.createElement("div");
+      div.className = "invItem";
+      div.innerHTML = slotInner(tab, it, false);
+      div.title = "클릭하면 장착";
+      div.addEventListener("click", ()=>{ equipFromInv(tab, idx); renderLoadout(); });
       invWrapEl.appendChild(div);
     });
 
@@ -759,15 +688,14 @@
 
     const slots = loadoutState.equip[tab];
     const empty = slots.findIndex(x=>!x);
-    if(empty===-1) { overlay('슬롯이 가득 찼어'); return; }
+    if(empty===-1) { overlay("슬롯이 가득 찼어"); return; }
 
     const stack = inv[invIndex];
-    if(!stack || !stack.id) return;
+    if(!stack || !stack.id) return; // 안전
 
     const qty = Math.max(1, Number(stack.qty)||1);
-    const lv  = clamp(Math.round(Number(stack.lv)||0), 0, MAX_ENHANCE);
 
-    slots[empty] = { id:stack.id, name:stack.name, grade:stack.grade, patternId:stack.patternId||null, lv };
+    slots[empty] = { id:stack.id, name:stack.name, grade:stack.grade, patternId:stack.patternId||null };
 
     if(qty>1){
       stack.qty = qty - 1;
@@ -784,75 +712,13 @@
     if(slotIndex<0 || slotIndex>=slots.length) return;
     const item = slots[slotIndex];
     if(!item) return;
-
     slots[slotIndex]=null;
-
-    // 강화레벨 유지
-    addToInventoryStack(tab, { ...item, lv: clamp(Math.round(Number(item.lv)||0),0,MAX_ENHANCE) });
+    addToInventoryStack(tab, item);
     sortInventory(tab);
     saveLoadout();
   }
 
-    function enhanceFromInv(tab, invIndex){
-    normalizeInventory(tab);
-    const inv = loadoutState.inv[tab];
-    if(invIndex<0 || invIndex>=inv.length) return;
-
-    const st = inv[invIndex];
-    if(!st || !st.id) return;
-
-    const id = String(st.id);
-    const name = st.name;
-    const grade = st.grade || 'common';
-    const patternId = st.patternId || null;
-    const lv  = clamp(Math.round(Number(st.lv)||0), 0, MAX_ENHANCE);
-
-    if(lv >= MAX_ENHANCE){ overlay('최대 강화(+9)'); return; }
-
-    // (B) 같은 이름(=id) 아이템이 인벤토리에 총 2개 이상이면 강화 가능(레벨 상관 없음)
-    const total = totalQtyForId(tab, id);
-    if(total < 2){ overlay('같은 아이템 2개 필요'); return; }
-
-    // 1) 대상 스택에서 1개 소모
-    consumeOne(inv, invIndex);
-
-    // 2) 남아있는 같은 id 중 아무거나 1개 추가 소모 (가능하면 낮은 lv부터)
-    let idx2 = -1;
-    let bestLv = 1e9;
-    for(let i=0;i<inv.length;i++){
-      const it = inv[i];
-      if(!it || !it.id) continue;
-      if(String(it.id) !== id) continue;
-      const lvi = clamp(Math.round(Number(it.lv)||0),0,MAX_ENHANCE);
-      if(lvi < bestLv){ bestLv = lvi; idx2 = i; }
-    }
-    if(idx2 === -1){
-      // 이 케이스는 total>=2면 발생하면 안되지만, 안전망
-      overlay('강화 실패(재시도)');
-      return;
-    }
-    consumeOne(inv, idx2);
-
-    // 3) +1 생성
-    addToInventoryStack(tab, { id, name, grade, patternId, lv: lv+1 });
-    sortInventory(tab);
-    saveLoadout();
-    overlay('강화 성공: +' + (lv+1));
-  }
-
-  function consumeOne(inv, idx){
-    if(idx<0 || idx>=inv.length) return;
-    const st = inv[idx];
-    if(!st) return;
-    const qty = Math.max(1, Number(st.qty)||1);
-    if(qty>1){
-      st.qty = qty - 1;
-    }else{
-      inv.splice(idx, 1);
-    }
-  }
-
-function drawMany(tab, n){
+  function drawMany(tab, n){
     const count = Math.max(1, Number(n)||1);
     const tbl = gachaTableFor(tab);
 
@@ -871,7 +737,6 @@ function drawMany(tab, n){
         name: pick.name,
         grade: pick.grade || g,
         patternId: pick.patternId || null,
-        lv: 0,
       });
     }
 
@@ -899,8 +764,7 @@ function drawMany(tab, n){
     for(let m=1;m<=MAIN_STAGE_COUNT;m++){
       const master = masterFor(m);
       const div = document.createElement("div");
-      const anyCleared = Array.from({length:SUB_STAGE_COUNT}, (_,i)=> getBestProgress(stageCode(m, i+1)) >= 30).some(Boolean);
-      div.className = "stageBtn" + (m===selectedMain?" active":"") + (anyCleared?" cleared":"");
+      div.className = "stageBtn" + (m===selectedMain?" active":"");
       div.innerHTML = '<div class="t">STAGE '+m+' <span style="opacity:.75">·</span> <span style="opacity:.9">'+escapeHtml(master.bossName)+'</span></div>'
         + '<div class="d">'+escapeHtml(master.gimmick)+'</div>';
       div.addEventListener("click", ()=>{ selectedMain=m; buildStageUI(); });
@@ -914,8 +778,7 @@ function drawMany(tab, n){
       const code = stageCode(selectedMain, s);
       const btn = document.createElement("button");
       btn.type = "button";
-      const cleared = (getBestProgress(code) >= 30);
-      btn.className = "subBtn" + (s===MIDBOSS_SUB_INDEX?" midboss":"") + (cleared?" cleared":"");
+      btn.className = "subBtn" + (s===MIDBOSS_SUB_INDEX?" midboss":"");
       btn.innerHTML = '<div style="font-weight:1000;font-size:16px;">'+s+'</div>'
         + '<div style="font-size:11px;opacity:.85;">'+(s===MIDBOSS_SUB_INDEX?"B":"")+'</div>';
       btn.addEventListener("click", ()=>{
@@ -1037,9 +900,7 @@ function drawMany(tab, n){
     state.patternQueue = buildPatternPlan(main, sub);
 
     state.shakeT = 0;
-    // 적 유닛이 안 나오는 이슈 방지: 시작 직후 1마리 스폰
-    state.enemySpawnT = enemySpawnInterval();
-    updateEnemySpawns(0);
+    state.enemySpawnT = 0;
 
     state.doomActive = (main===1);
     state.doomFired = false;
@@ -1088,51 +949,9 @@ function drawMany(tab, n){
     });
   }
 
-  function spawnEnemy(overrides){
-    const base = { x:CFG.enemySpawnX, y:CFG.laneY, hp:200, maxHp:200, atk:16, rate:1.0, range:18, speed:62, cd:0 };
-    const e = { ...base, ...(overrides||{}) };
-    // maxHp 미지정시 hp와 동일
-    if(!(Number(e.maxHp)>0)) e.maxHp = e.hp;
+  function spawnEnemy(){
+    const e = { x:CFG.enemySpawnX, y:CFG.laneY, hp:200, maxHp:200, atk:16, rate:1.0, range:18, speed:62, cd:0 };
     state.enemies.push(e);
-  }
-
-  function enemySpawnInterval(){
-    // 스테이지가 뒤로 갈수록 조금 더 자주
-    const base = CFG.enemySpawnEvery;
-    const m = Math.max(0, state.main-1);
-    const s = Math.max(0, state.sub-1);
-    let mult = 1 - (m*0.06) - (s*0.03);
-    if(state.sub===MIDBOSS_SUB_INDEX) mult *= 0.92;
-    return clamp(base*mult, 0.9, 3.2);
-  }
-
-  function updateEnemySpawns(dt){
-    if(!state.running) return;
-    state.enemySpawnT += dt;
-    const interval = enemySpawnInterval();
-
-    // 너무 몰리면(프레임 튐) 한번에 과도 스폰 방지
-    let guard = 0;
-    while(state.enemySpawnT >= interval && guard < 8){
-      state.enemySpawnT -= interval;
-      guard++;
-
-      const m = Math.max(0, state.main-1);
-      const s = Math.max(0, state.sub-1);
-      const scale = 1 + (m*0.18) + (s*0.06);
-
-      let hp = Math.round(200 * scale);
-      let atk = Math.round(16 * (1 + m*0.14 + s*0.04));
-      let speed = Math.round(62 + m*3 - s*1);
-
-      if(state.sub===MIDBOSS_SUB_INDEX){
-        hp = Math.round(hp * 1.7);
-        atk = Math.round(atk * 1.45);
-        speed = Math.max(50, speed - 8);
-      }
-
-      spawnEnemy({ hp, maxHp:hp, atk, speed });
-    }
   }
 
   function applyPattern(p){
@@ -1201,9 +1020,6 @@ function drawMany(tab, n){
   }
 
   function updateEntities(dt){
-    const units = state.units;
-    const enemies = state.enemies;
-
     // 충돌/추월 방지용 간격
     const BODY_R = 14;
     const BLOCK_DIST = BODY_R * 2 + 2;
@@ -1211,14 +1027,13 @@ function drawMany(tab, n){
     const enemyBaseEdge = state.baseE.x - state.baseE.w/2;
     const playerBaseEdge = state.baseP.x + state.baseP.w/2;
 
-    // --- 아군 ---
+    // Units
     for(const u of units){
-      // 타겟: 가장 가까운 적(가능하면 전방), 없으면 가장 가까운 적(후방 포함)
+      // nearest enemy in front
       let target = null;
       let best = Infinity;
       let signed = 0;
 
-      // 1) 전방 우선
       for(const e of enemies){
         const sdx = e.x - u.x;
         if(sdx >= 0 && sdx < best){
@@ -1227,12 +1042,12 @@ function drawMany(tab, n){
           target = e;
         }
       }
-      // 2) 후방 포함(이미 추월해버린 경우)
+      // overlap rescue (when already crossed due to dt)
       if(!target){
         for(const e of enemies){
           const sdx = e.x - u.x;
           const dist = Math.abs(sdx);
-          if(dist < best){
+          if(dist < BLOCK_DIST && dist < best){
             best = dist;
             signed = sdx;
             target = e;
@@ -1240,19 +1055,11 @@ function drawMany(tab, n){
         }
       }
 
-      // 공격 쿨다운 처리
-      u.cd = (typeof u.cd === "number") ? u.cd : 0;
-      u.cd -= dt;
-
       if(!target){
-        // 적이 없으면 본진으로
         const dxBase = enemyBaseEdge - u.x;
         if(dxBase <= u.range){
-          if(u.cd <= 0){
-            state.baseE.hp = Math.max(0, state.baseE.hp - u.atk);
-            state.dmgToEnemyBase += u.atk;
-            u.cd = 1 / Math.max(0.1, u.rate||1);
-          }
+          state.baseE.hp = Math.max(0, state.baseE.hp - u.atk);
+          state.dmgToEnemyBase += u.atk;
         }else{
           const nextX = u.x + u.speed*dt;
           u.x = Math.min(nextX, enemyBaseEdge - (BODY_R + 2));
@@ -1260,29 +1067,25 @@ function drawMany(tab, n){
       }else{
         const dist = Math.abs(target.x - u.x);
         if(dist <= u.range){
-          if(u.cd <= 0){
-            target.hp -= u.atk;
-            u.cd = 1 / Math.max(0.1, u.rate||1);
-          }
+          target.hp -= u.atk;
         }else{
           const nextX = u.x + u.speed*dt;
-          // target이 전방/후방 어디든, 항상 stop line을 강제해 추월을 원천 차단
-          const stopX = target.x - BLOCK_DIST;
-          u.x = Math.min(nextX, stopX);
+          if(signed >= 0){
+            u.x = Math.min(nextX, target.x - BLOCK_DIST);
+          }else{
+            // should be rare; still move forward
+            u.x = nextX;
+          }
         }
       }
-
-      // 베이스 경계
-      u.x = clamp(u.x, playerBaseEdge + (BODY_R + 2), enemyBaseEdge - (BODY_R + 2));
     }
 
-    // --- 적군 ---
+    // Enemies
     for(const e of enemies){
       let target = null;
       let best = Infinity;
       let signed = 0;
 
-      // 1) 전방(왼쪽) 우선: e.x - u.x >= 0
       for(const u of units){
         const sdx = e.x - u.x;
         if(sdx >= 0 && sdx < best){
@@ -1291,12 +1094,12 @@ function drawMany(tab, n){
           target = u;
         }
       }
-      // 2) 후방 포함(이미 추월해버린 경우)
+      // overlap rescue
       if(!target){
         for(const u of units){
           const sdx = e.x - u.x;
           const dist = Math.abs(sdx);
-          if(dist < best){
+          if(dist < BLOCK_DIST && dist < best){
             best = dist;
             signed = sdx;
             target = u;
@@ -1304,16 +1107,10 @@ function drawMany(tab, n){
         }
       }
 
-      e.cd = (typeof e.cd === "number") ? e.cd : 0;
-      e.cd -= dt;
-
       if(!target){
         const dxBase = e.x - playerBaseEdge;
         if(dxBase <= e.range + 20){
-          if(e.cd <= 0){
-            state.baseP.hp = Math.max(0, state.baseP.hp - e.atk);
-            e.cd = 1 / Math.max(0.1, e.rate||1);
-          }
+          state.baseP.hp = Math.max(0, state.baseP.hp - e.atk);
         }else{
           const nextX = e.x - e.speed*dt;
           e.x = Math.max(nextX, playerBaseEdge + (BODY_R + 2));
@@ -1321,21 +1118,19 @@ function drawMany(tab, n){
       }else{
         const dist = Math.abs(e.x - target.x);
         if(dist <= e.range){
-          if(e.cd <= 0){
-            target.hp -= e.atk;
-            e.cd = 1 / Math.max(0.1, e.rate||1);
-          }
+          target.hp -= e.atk;
         }else{
           const nextX = e.x - e.speed*dt;
-          const stopX = target.x + BLOCK_DIST;
-          e.x = Math.max(nextX, stopX);
+          if(signed >= 0){
+            e.x = Math.max(nextX, target.x + BLOCK_DIST);
+          }else{
+            e.x = nextX;
+          }
         }
       }
-
-      e.x = clamp(e.x, playerBaseEdge + (BODY_R + 2), enemyBaseEdge - (BODY_R + 2));
     }
 
-    // --- cleanup & rewards ---
+    // cleanup
     for(let i=units.length-1;i>=0;i--){
       if(units[i].hp<=0) units.splice(i,1);
     }
@@ -1344,57 +1139,7 @@ function drawMany(tab, n){
         enemies.splice(i,1);
         state.kills += 1;
         state.score += 120;
-        state.coins += 1; // 킬 보상
-      }
-    }
-
-    // --- HARD NO-PASS SOLVER ---
-    // (4) 아군이 깊숙히 들어가 적이 무시하고 지나가는 현상 완전 차단
-    if(units.length && enemies.length){
-      // 정렬: 아군은 오른쪽이 앞, 적군은 왼쪽이 앞
-      units.sort((a,b)=>a.x-b.x);
-      enemies.sort((a,b)=>a.x-b.x);
-
-      // 팀 내부 겹침(간격 유지)
-      for(let i=units.length-2;i>=0;i--){
-        if(units[i].x > units[i+1].x - BLOCK_DIST){
-          units[i].x = units[i+1].x - BLOCK_DIST;
-        }
-      }
-      for(let i=1;i<enemies.length;i++){
-        if(enemies[i].x < enemies[i-1].x + BLOCK_DIST){
-          enemies[i].x = enemies[i-1].x + BLOCK_DIST;
-        }
-      }
-
-      // 양팀 경계(절대 추월 금지): 아군 선두 <= 적군 선두 - BLOCK_DIST
-      const uFront = units[units.length-1];
-      const eFront = enemies[0];
-      if(uFront.x > eFront.x - BLOCK_DIST){
-        uFront.x = eFront.x - BLOCK_DIST;
-      }
-      if(eFront.x < uFront.x + BLOCK_DIST){
-        eFront.x = uFront.x + BLOCK_DIST;
-      }
-
-      // 경계 수정 후 다시 내부 정리
-      for(let i=units.length-2;i>=0;i--){
-        if(units[i].x > units[i+1].x - BLOCK_DIST){
-          units[i].x = units[i+1].x - BLOCK_DIST;
-        }
-      }
-      for(let i=1;i<enemies.length;i++){
-        if(enemies[i].x < enemies[i-1].x + BLOCK_DIST){
-          enemies[i].x = enemies[i-1].x + BLOCK_DIST;
-        }
-      }
-
-      // 베이스 경계 재클램프
-      for(const u of units){
-        u.x = clamp(u.x, playerBaseEdge + (BODY_R + 2), enemyBaseEdge - (BODY_R + 2));
-      }
-      for(const e of enemies){
-        e.x = clamp(e.x, playerBaseEdge + (BODY_R + 2), enemyBaseEdge - (BODY_R + 2));
+        state.coins += 1;
       }
     }
   }
@@ -1420,7 +1165,7 @@ function drawMany(tab, n){
     if(!state.doomActive || state.doomFired) return;
     if(!state.baseE || !(state.baseE.maxHp>0)) return;
     const ratio = state.baseE.hp / state.baseE.maxHp;
-    if(ratio > 0.10) return;
+    if(ratio >= 0.10) return;
 
     const curAt = getNextDoomAt();
     const desiredAt = state.play + 3; // 3초 예고 후 발동
@@ -1440,18 +1185,9 @@ function drawMany(tab, n){
     fxEl.textContent = String(state.fx);
 
     if(state.doomActive){
-      const remain = Math.max(0, getNextDoomAt() - state.play);
-      doomTextEl.textContent = fmt1(remain);
-
-      // (B) 15% 이하: doomChip 자체를 "강제청산 경고"로 변경
-      const ratio = (state.baseE && state.baseE.maxHp>0) ? (state.baseE.hp / state.baseE.maxHp) : 1;
-      const warn = (!state.doomFired) && (ratio <= 0.15);
-      doomLabelEl.textContent = warn ? "강제청산 경고" : "강제청산까지";
-      doomUnitEl.textContent = "s";
-      doomChip.classList.toggle("danger", warn);
+      doomTextEl.textContent = fmt1(Math.max(0, getNextDoomAt() - state.play));
       doomChip.style.display = "flex";
     }else{
-      doomChip.classList.remove("danger");
       doomChip.style.display = "none";
     }
 
@@ -1646,22 +1382,14 @@ function drawMany(tab, n){
   function tick(ts){
     const dt = Math.min(0.05, (ts-lastTs)/1000);
     lastTs = ts;
-    if(state.running){
-      // modal이 열려 있으면 게임이 완전히 멈춤(시간/패턴/스폰/이동 모두 정지)
-      if(pausedByModal){
-        updateHUD();
-        draw();
-        requestAnimationFrame(tick);
-        return;
-      }
 
+    if(state.running){
       state.play += dt;
       state.timeLeft = Math.max(0, CFG.durationSec - state.play);
 
       updateFX(dt);
       updatePatterns(dt);
       updateMana(dt);
-      updateEnemySpawns(dt);
       updateEntities(dt);
 
       // Stage 1: 적 본진 10% 미만이면 강제청산을 3초 예고 후 앞당김
@@ -1731,65 +1459,10 @@ function drawMany(tab, n){
     const a = loadoutState.inv.equip.find(x=>x.id==="E_PROTECT");
     if(!a || a.qty !== 2) throw new Error("stack qty incorrect");
 
-    // NEW: enhancement stacks are separated by (id+lv) and 2 copies -> +1
-    loadoutState.inv.equip = [
-      {id:'E_PROTECT', name:'A', grade:'common', lv:0, qty:2},
-      {id:'E_PROTECT', name:'A', grade:'common', lv:1, qty:1},
-    ];
-    normalizeInventory('equip');
-    if(loadoutState.inv.equip.length !== 2) throw new Error('normalizeInventory should keep different lv separate');
-    // enhance lv0 stack (index 0 is lv0 in this setup)
-    enhanceFromInv('equip', 0);
-    normalizeInventory('equip');
-    const s0 = loadoutState.inv.equip.find(x=>x.id==='E_PROTECT' && (Number(x.lv)||0)===0);
-    if(s0) throw new Error('enhance should consume lv0 stack');
-    const s1 = loadoutState.inv.equip.find(x=>x.id==='E_PROTECT' && (Number(x.lv)||0)===1);
-    if(!s1 || Math.max(1,Number(s1.qty)||1) !== 2) throw new Error('enhance should add to lv1 stack');
-    // NEW: enhancement (B) - different lv stacks can be consumed together
-    loadoutState.inv.equip = [
-      {id:'E_PROTECT', name:'A', grade:'common', lv:0, qty:1},
-      {id:'E_PROTECT', name:'A', grade:'common', lv:3, qty:1},
-    ];
-    normalizeInventory('equip');
-    sortInventory('equip');
-    const idxLv3 = loadoutState.inv.equip.findIndex(x=>x.id==='E_PROTECT' && (Number(x.lv)||0)===3);
-    if(idxLv3 < 0) throw new Error('test setup failed: lv3 stack not found');
-    enhanceFromInv('equip', idxLv3);
-    normalizeInventory('equip');
-    const lv4 = loadoutState.inv.equip.find(x=>x.id==='E_PROTECT' && (Number(x.lv)||0)===4);
-    if(!lv4 || Math.max(1,Number(lv4.qty)||1) !== 1) throw new Error('B enhance should create lv4 x1');
-    const lv0 = loadoutState.inv.equip.find(x=>x.id==='E_PROTECT' && (Number(x.lv)||0)===0);
-    const lv3 = loadoutState.inv.equip.find(x=>x.id==='E_PROTECT' && (Number(x.lv)||0)===3);
-    if(lv0 || lv3) throw new Error('B enhance should consume lv0 and lv3');
-
-
-    // NEW: enemy spawning should occur when running
-    state.running = true;
-    state.main = 1; state.sub = 1;
-    state.enemies = [];
-    // 적 유닛이 안 나오는 이슈 방지: 시작 직후 1마리 스폰
-    state.enemySpawnT = enemySpawnInterval();
-    updateEnemySpawns(0);
-    updateEnemySpawns(CFG.enemySpawnEvery + 0.01);
-    if(state.enemies.length < 1) throw new Error('updateEnemySpawns did not spawn');
-    state.running = false;
-
-
     // NEW: myth pool must not be empty (was causing undefined.id crash)
     if(!Array.isArray(TOTEM_BY_GRADE.myth) || TOTEM_BY_GRADE.myth.length < 1){
       throw new Error("TOTEM_BY_GRADE.myth must have at least 1 item");
     }
-
-    // NEW: doom schedule inclusive (ratio <= 0.10)
-    state.doomActive = true;
-    state.doomFired = false;
-    state.play = 50;
-    state.baseE.maxHp = 100;
-    state.baseE.hp = 10; // 10% exactly
-    state.patternQueue = [{ at: 105, name: "강제청산", type:"doom" }];
-    maybeScheduleDoomFromEnemyHp();
-    const da = getNextDoomAt();
-    if(da > 53.001) throw new Error("doom schedule should trigger at <=10% (expected <=53)");
 
     // NEW: pickRandomItem must always return an item even for missing grade
     const p1 = pickRandomItem("totem", "relic");

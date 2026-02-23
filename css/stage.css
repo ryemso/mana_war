@@ -1,0 +1,18 @@
+/* stage select */
+    .stageHeader{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+    .stageHeader h2{margin:0;font-size:22px;font-weight:1000}
+    .stageHeader p{margin:6px 0 0;opacity:.82;font-size:13px;line-height:1.5}
+    .stageLayout{display:grid;grid-template-columns:.9fr 1.1fr;gap:12px}
+    @media (max-width:840px){.stageLayout{grid-template-columns:1fr}}
+    .box{border-radius:14px;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.04);padding:12px}
+    .box h3{margin:0 0 10px 0;font-size:14px;font-weight:1000;opacity:.95}
+    .mainGrid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+    .subGrid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:10px}
+    .stageBtn{border-radius:12px;border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.06);padding:10px 10px;cursor:pointer;text-align:left;display:flex;flex-direction:column;gap:6px;min-height:74px}
+    .stageBtn.active{background:rgba(105,210,255,.12);border-color:rgba(105,210,255,.40)}
+    .stageBtn .t{font-weight:1000;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+    .stageBtn .d{font-size:12px;opacity:.82;line-height:1.35}
+    .subBtn{border-radius:12px;border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.06);padding:10px 10px;cursor:pointer;text-align:center;display:flex;flex-direction:column;gap:4px;min-height:74px}
+    .subBtn.midboss{background:rgba(255,220,110,.10);border-color:rgba(255,220,110,.30)}
+
+    .actions{margin-top:12px;display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap}

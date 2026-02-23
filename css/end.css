@@ -1,0 +1,29 @@
+/* end */
+    .endPanel{width:min(860px,96vw)}
+    .endTop{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:10px}
+    .stageBadge2{background:rgba(255,255,255,.10);border:1px solid rgba(255,255,255,.18);border-radius:12px;padding:8px 12px;display:flex;align-items:baseline;gap:10px}
+    .stageBadge2 .code{font-weight:1000;font-size:28px;letter-spacing:1px}
+    .stageBadge2 .lv{opacity:.85;font-size:13px}
+    .endTitle{font-weight:1000;font-size:34px;letter-spacing:.6px;display:flex;align-items:center;gap:10px}
+    .endTitle.lose{color:rgba(255,123,123,.95)}
+    .stars{display:flex;gap:10px;align-items:center}
+    .star{width:34px;height:34px;border-radius:10px;display:grid;place-items:center;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.14);font-size:20px}
+    .star.on{background:rgba(255,220,110,.18);border-color:rgba(255,220,110,.45);filter:brightness(1.25)}
+
+    .endBody{display:grid;grid-template-columns:1.2fr .8fr;gap:12px}
+    @media (max-width:760px){.endBody{grid-template-columns:1fr}}
+    .summary{border-radius:14px;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.05);padding:12px}
+    .row{display:flex;justify-content:space-between;gap:12px;padding:6px 0;border-bottom:1px dashed rgba(255,255,255,.12)}
+    .row:last-child{border-bottom:none}
+    .row .k{opacity:.85}
+    .row .v{font-weight:1000}
+    .bonusLine{margin-top:10px;border-radius:12px;border:1px solid rgba(255,255,255,.14);background:rgba(0,0,0,.18);padding:10px 12px;display:flex;justify-content:space-between;align-items:center;gap:12px;font-weight:1000}
+    .pill{font-size:12px;font-weight:900;padding:2px 8px;border-radius:999px;background:rgba(255,255,255,.10);border:1px solid rgba(255,255,255,.16);opacity:.95}
+
+    .mapBox{border-radius:14px;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.04);padding:12px}
+    .mapTitle{font-weight:900;margin-bottom:10px;opacity:.95;display:flex;justify-content:space-between;gap:10px}
+    .mapTitle small{opacity:.75;font-weight:700}
+    .stageMap{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+    .node{width:36px;height:36px;border-radius:12px;display:grid;place-items:center;border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.06);font-weight:1000;user-select:none}
+    .node.mid{background:rgba(255,220,110,.10);border-color:rgba(255,220,110,.30)}
+    .conn{width:34px;height:2px;background:rgba(255,255,255,.18);border-radius:999px;opacity:.8}

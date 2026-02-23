@@ -1,0 +1,4 @@
+/* overlay */
+    .overlay{position:absolute;inset:0;display:flex;align-items:flex-start;justify-content:center;pointer-events:none}
+    .overlay .msg{margin-top:70px;padding:10px 14px;border-radius:12px;border:1px solid rgba(255,255,255,.16);background:rgba(0,0,0,.25);backdrop-filter:blur(8px);font-weight:1000;opacity:0;transform:translateY(-4px);transition:opacity .12s ease, transform .12s ease}
+    .overlay .msg.show{opacity:1;transform:translateY(0)}

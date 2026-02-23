@@ -1,0 +1,17 @@
+:root{
+      font-family:system-ui,-apple-system,Segoe UI,Roboto,"Noto Sans KR",sans-serif;
+
+      /* 등급 컬러 */
+      --c-common:#9aa0a6;      /* 커먼 = 회색 */
+      --c-rare:#b36bff;        /* 레어 */
+      --c-unique:#ff00ff;      /* 유니크 */
+      --c-myth:#ffb400;        /* 신화 */
+      --c-limited:#8b0000;     /* 리미티드 = 진한 빨강 */
+      --c-premium:#59e99c;     /* 프리미엄 */
+      --c-relic:#59e99c;       /* 태초 */
+
+      --bg:#0b1020;
+      --panel:#121a33;
+      --border:#25305a;
+      --ink:#e8ecff;
+    }

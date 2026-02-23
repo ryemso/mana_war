@@ -1,0 +1,44 @@
+/* loadout */
+    .loadoutTop{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:10px}
+    .tabs{display:flex;gap:8px;flex-wrap:wrap}
+    .tab{border-radius:999px;border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.06);padding:6px 10px;font-weight:1000;cursor:pointer}
+    .tab.active{background:rgba(105,210,255,.12);border-color:rgba(105,210,255,.40)}
+    .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    @media (max-width:860px){.grid2{grid-template-columns:1fr}}
+    /* 장착 슬롯: (요구) 탭당 3슬롯이 한 줄에 고정 */
+    .slotRow{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+    @media (max-width:720px){.slotRow{grid-template-columns:1fr}}
+    .slot{min-width:0;border-radius:12px;border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.06);padding:10px 10px;cursor:pointer;display:flex;align-items:center;gap:10px}
+    .slot b{font-weight:1000}
+
+    .invScroll{max-height:320px;overflow-y:auto;overflow-x:hidden;padding-right:6px}
+
+    .sel{appearance:none;-webkit-appearance:none;-moz-appearance:none;background:rgba(255,255,255,.06);color:var(--ink);border:1px solid rgba(255,255,255,.18);border-radius:10px;padding:6px 10px;font-weight:900;outline:none}
+    .inv{display:flex;gap:10px;flex-wrap:wrap;align-content:flex-start}
+    .invItem{min-width:220px;border-radius:12px;border:1px solid rgba(255,255,255,.14);background:rgba(0,0,0,.14);padding:10px 10px;cursor:pointer;display:flex;align-items:center;gap:10px}
+
+    .small{opacity:.78;font-size:12px;line-height:1.4}
+
+    .gradeTag{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:1000;padding:2px 8px;border-radius:999px;border:1px solid rgba(255,255,255,.18);background:rgba(0,0,0,.22)}
+    .itemName{font-weight:1000}
+
+    .g-common{color:var(--c-common)}
+    .g-rare{color:var(--c-rare)}
+    .g-unique{color:var(--c-unique)}
+    .g-myth{color:var(--c-myth)}
+    .g-limited{color:var(--c-limited)}
+    .g-premium{color:var(--c-premium)}
+    .g-relic{color:var(--c-relic)}
+
+    .itemName.g-relic,.itemName.g-limited,.itemName.g-premium,.itemName.g-myth{ text-shadow:0 0 10px currentColor; }
+
+    .miniSvg{width:56px;height:28px;border-radius:10px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12)}
+    .miniSvg polyline{fill:none;stroke:rgba(255,255,255,.85);stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+
+    .dbg{margin-top:10px;font-size:12px;opacity:.75;white-space:pre-wrap}
+
+
+/* 이름은 ... 생략 금지(요구). JS에서 너비에 맞춰 폰트 자동 축소 */
+.nameLine{display:flex;align-items:baseline;gap:6px;min-width:0;flex-wrap:nowrap}
+.nameLine .itemName{flex:1;min-width:0}
+.slot .itemName, .invItem .itemName{display:inline-block;max-width:100%;overflow:hidden;text-overflow:clip;white-space:nowrap;vertical-align:bottom}
