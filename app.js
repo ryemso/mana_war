@@ -12,8 +12,20 @@
     .replace(/\"/g,"&quot;")
     .replace(/'/g,"&#039;");
 
-  function showModal(m){ m.classList.add("show"); m.setAttribute("aria-hidden","false"); }
-  function hideModal(m){ m.classList.remove("show"); m.setAttribute("aria-hidden","true"); }
+  function isShown(m){ return !!(m && m.classList && m.classList.contains("show")); }
+  function showModal(m){ m.classList.add("show"); m.setAttribute("aria-hidden","false"); syncPause(); }
+  function hideModal(m){ m.classList.remove("show"); m.setAttribute("aria-hidden","true"); syncPause(); }
+
+  function syncPause(){
+    // Pause the game whenever a visible modal requests pausing.
+    try{
+      if(typeof state === "undefined" || !state || !state.running) return;
+      const anyPausing = Array.from(document.querySelectorAll(".modalBack.show"))
+        .some(n=>n && n.dataset && n.dataset.pauses==="true");
+      state.paused = !!anyPausing;
+    }catch(_e){}
+  }
+
 
   // =========================
   // Config
@@ -489,7 +501,9 @@
   const patternTextEl = el("patternText");
   const nextPatternTextEl = el("nextPatternText");
   const doomChip = el("doomChip");
+  const doomLabelEl = el("doomLabel");
   const doomTextEl = el("doomText");
+  const doomUnitEl = el("doomUnit");
   const scoreEl = el("score");
   const coinsEl = el("coins");
   const basePEl = el("baseP");
@@ -507,12 +521,21 @@
   const stageModal = el("stageModal");
   const loadoutModal = el("loadoutModal");
   const endModal = el("endModal");
+  const storyModal = el("storyModal");
+  const storyTitleEl = el("storyTitle");
+  const storyTextEl = el("storyText");
+  const storyNextBtn = el("storyNextBtn");
+  const storySkipBtn = el("storySkipBtn");
 
   // Buttons
   el("startBtn").addEventListener("click", ()=>{ hideModal(titleModal); showModal(startMenuModal); });
   el("howBtn").addEventListener("click", ()=>{ showModal(howModal); });
   el("howCloseBtn").addEventListener("click", ()=>{ hideModal(howModal); });
   howModal.addEventListener("click", (e)=>{ if(e.target===howModal) hideModal(howModal); });
+
+  storyNextBtn && storyNextBtn.addEventListener("click", ()=>nextStory());
+  storySkipBtn && storySkipBtn.addEventListener("click", ()=>skipStory());
+  storyModal && storyModal.addEventListener("click", (e)=>{ if(e.target===storyModal) skipStory(); });
 
   el("startMenuBackBtn").addEventListener("click", ()=>{ hideModal(startMenuModal); showModal(titleModal); });
   el("goStageSelectBtn").addEventListener("click", ()=>{ hideModal(startMenuModal); openStageSelect(); });
@@ -545,6 +568,87 @@
     if(overlayTimer) clearTimeout(overlayTimer);
     overlayTimer = setTimeout(()=>overlayMsgEl.classList.remove("show"), 900);
   }
+
+  // =========================
+  // Story / cutscenes
+  // =========================
+  let storyLines = [];
+  let storyIdx = 0;
+
+  function formatStoryLine(line){
+    const s = String(line||"");
+    const parts = s.split(":");
+    if(parts.length >= 2){
+      const who = escapeHtml(parts.shift().trim());
+      const say = escapeHtml(parts.join(":").trim());
+      return '<div class="who">'+who+'</div><div class="say">'+say+'</div>';
+    }
+    return escapeHtml(s);
+  }
+
+  function renderStory(){
+    if(!storyTextEl) return;
+    const line = storyLines[storyIdx] || "";
+    storyTextEl.innerHTML = formatStoryLine(line);
+    if(storyNextBtn){
+      storyNextBtn.textContent = (storyIdx >= storyLines.length-1) ? "OK" : "NEXT";
+    }
+  }
+
+  function openStory(title, lines){
+    if(!lines || !lines.length) return;
+    if(isShown(storyModal)) return; // don't interrupt an active cutscene
+    storyLines = lines.slice();
+    storyIdx = 0;
+    if(storyTitleEl) storyTitleEl.textContent = title || "📜 STORY";
+    renderStory();
+    showModal(storyModal);
+  }
+
+  function nextStory(){
+    if(!isShown(storyModal)) return;
+    if(storyIdx < storyLines.length-1){
+      storyIdx += 1;
+      renderStory();
+    }else{
+      hideModal(storyModal);
+    }
+  }
+
+  function skipStory(){
+    if(isShown(storyModal)) hideModal(storyModal);
+  }
+
+  function storyForStageStart(main, sub){
+    const master = masterFor(main);
+    const code = stageCode(main, sub);
+    const lines = [];
+    if(main === 1){
+      lines.push("시스템: 튜토리얼에 진입했습니다.");
+      lines.push("시스템: 목표는 간단합니다. 적 본진을 무너뜨리세요.");
+      lines.push("시스템: 단, 적 본진이 15% 아래로 떨어지면 '강제청산 경고'가 시작됩니다.");
+      lines.push("시스템: 10% 아래로 떨어지면 3초 후 강제청산. 그 전에 끝내세요.");
+    }else{
+      lines.push("전략가: STAGE "+code+" 진입.");
+      lines.push("전략가: 보스 - "+master.bossName+" / 기믹 - "+master.gimmick);
+      lines.push("전략가: 환율 예고(3초)와 패턴 진동(2초 전)을 활용해 밀어붙인다.");
+    }
+    return { title: "🎬 스테이지 시작", lines };
+  }
+
+  function storyForMidboss(main){
+    const master = masterFor(main);
+    return {
+      title: "⚔️ 중간보스",
+      lines: [
+        "시스템: 세부 4 - 중간보스 구간입니다.",
+        "시스템: "+master.bossName+"의 패턴이 더 거칠어집니다.",
+        "전략가: 여기서 무너지면 끝. 리스크는 내가 관리한다."
+      ]
+    };
+  }
+
+
 
   // =========================
   // Loadout UI
@@ -862,7 +966,12 @@
     shakeT:0,
     enemySpawnT:0,
 
+    paused:false,
+
     doomActive:false,
+    doomWarn15:false,
+    doomStory15:false,
+    doomStory10:false,
 
     doomFired:false,
   };
@@ -902,7 +1011,12 @@
     state.shakeT = 0;
     state.enemySpawnT = 0;
 
+    state.paused = false;
+
     state.doomActive = (main===1);
+    state.doomWarn15 = false;
+    state.doomStory15 = false;
+    state.doomStory10 = false;
     state.doomFired = false;
 
     stageHudEl.textContent = code;
@@ -913,6 +1027,17 @@
     doomChip.style.display = state.doomActive ? "flex" : "none";
 
     buildCards();
+    // Stage entry story cut
+    const st = storyForStageStart(main, sub);
+    openStory(st.title, st.lines);
+    if(sub===MIDBOSS_SUB_INDEX){
+      const mb = storyForMidboss(main);
+      // queue midboss story after stage-start by appending lines
+      storyLines = storyLines.concat(["", "—", ""].concat(mb.lines));
+      if(storyTitleEl) storyTitleEl.textContent = st.title;
+      renderStory();
+    }
+
     overlay("게임 시작");
     updateHUD();
   }
@@ -950,8 +1075,34 @@
   }
 
   function spawnEnemy(){
-    const e = { x:CFG.enemySpawnX, y:CFG.laneY, hp:200, maxHp:200, atk:16, rate:1.0, range:18, speed:62, cd:0 };
+    const m = state.main;
+    const isMid = (state.sub===MIDBOSS_SUB_INDEX);
+
+    let hp = 170 + m*28;
+    let atk = 13 + m*2;
+    let speed = 60 + m*2;
+    let rate = 1.0;
+
+    if(isMid){ hp *= 1.55; atk *= 1.35; speed *= 0.92; rate = 0.9; }
+
+    const e = { x:CFG.enemySpawnX, y:CFG.laneY, hp:Math.round(hp), maxHp:Math.round(hp), atk:Math.round(atk), rate, range:18, speed, cd:0 };
     state.enemies.push(e);
+  }
+
+  function enemySpawnInterval(){
+    // later stages spawn slightly faster
+    let t = CFG.enemySpawnEvery * (1 - (state.main-1)*0.05);
+    if(state.sub===MIDBOSS_SUB_INDEX) t *= 0.92;
+    return clamp(t, 0.9, 3.5);
+  }
+
+  function updateEnemySpawns(dt){
+    state.enemySpawnT += dt;
+    const itv = enemySpawnInterval();
+    while(state.enemySpawnT >= itv){
+      state.enemySpawnT -= itv;
+      spawnEnemy();
+    }
   }
 
   function applyPattern(p){
@@ -1020,6 +1171,9 @@
   }
 
   function updateEntities(dt){
+    const units = state.units;
+    const enemies = state.enemies;
+
     // 충돌/추월 방지용 간격
     const BODY_R = 14;
     const BLOCK_DIST = BODY_R * 2 + 2;
@@ -1160,11 +1314,27 @@
     return ev ? ev.at : CFG.doomAtSec;
   }
 
-  // Stage 1: 적 본진 체력 10% 미만이면 (타이머 외) 강제청산을 3초 예고 후 발동
-  function maybeScheduleDoomFromEnemyHp(){
+  // Stage 1: 적 본진 체력 기반 강제청산 경고/발동
+  // - 15% 이하: 경고(칩/컷)
+  // - 10% 미만: 3초 예고 후 강제청산(타이머보다 우선)
+  function updateDoomFromEnemyHp(){
     if(!state.doomActive || state.doomFired) return;
     if(!state.baseE || !(state.baseE.maxHp>0)) return;
+
     const ratio = state.baseE.hp / state.baseE.maxHp;
+
+    if(ratio < 0.15 && !state.doomWarn15){
+      state.doomWarn15 = true;
+      overlay("⚠️ 적 본진 15%↓ : 강제청산 경고");
+      if(!state.doomStory15){
+        state.doomStory15 = true;
+        openStory("⚠️ 강제청산 경고", [
+          "시스템: 적 본진이 15% 아래로 떨어졌습니다.",
+          "시스템: 강제청산이 예고됩니다. 더 빨리 끝내세요."
+        ]);
+      }
+    }
+
     if(ratio >= 0.10) return;
 
     const curAt = getNextDoomAt();
@@ -1174,7 +1344,15 @@
       state.patternQueue = state.patternQueue.filter(p=>p && p.type!=="doom");
       state.patternQueue.push({ at: desiredAt, name:"강제청산", type:"doom" });
       state.patternQueue.sort((a,b)=>a.at-b.at);
-      overlay("⚠️ 적 본진 10%↓ : 강제청산 예고");
+      overlay("💀 적 본진 10%↓ : 3초 후 강제청산");
+    }
+
+    if(!state.doomStory10){
+      state.doomStory10 = true;
+      openStory("💀 강제청산 임박", [
+        "시스템: 적 본진이 10% 아래로 붕괴했습니다.",
+        "시스템: 3초 후 강제청산 발동. 지금 끝내세요!"
+      ]);
     }
   }
   function updateHUD(){
@@ -1185,9 +1363,14 @@
     fxEl.textContent = String(state.fx);
 
     if(state.doomActive){
+      const warn = !!state.doomWarn15;
+      doomLabelEl && (doomLabelEl.textContent = warn ? "강제청산 경고" : "강제청산까지");
+      doomUnitEl && (doomUnitEl.textContent = "s");
       doomTextEl.textContent = fmt1(Math.max(0, getNextDoomAt() - state.play));
+      doomChip.classList.toggle("danger", warn);
       doomChip.style.display = "flex";
     }else{
+      doomChip.classList.remove("danger");
       doomChip.style.display = "none";
     }
 
@@ -1384,16 +1567,19 @@
     lastTs = ts;
 
     if(state.running){
-      state.play += dt;
+      syncPause();
+      if(!state.paused){
+        state.play += dt;
       state.timeLeft = Math.max(0, CFG.durationSec - state.play);
 
       updateFX(dt);
       updatePatterns(dt);
       updateMana(dt);
+      updateEnemySpawns(dt);
       updateEntities(dt);
 
-      // Stage 1: 적 본진 10% 미만이면 강제청산을 3초 예고 후 앞당김
-      maybeScheduleDoomFromEnemyHp();
+      // Stage 1: 적 본진 15%/10% 조건 기반 강제청산 경고/발동
+      updateDoomFromEnemyHp();
 
       const doomAt = getNextDoomAt();
       if(state.doomActive && !state.doomFired && state.play >= doomAt){
@@ -1409,6 +1595,8 @@
         endGame(false, "본진 파괴");
       }else if(state.timeLeft<=0){
         endGame(false, "시간 종료");
+      }
+
       }
 
       updateHUD();

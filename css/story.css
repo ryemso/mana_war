@@ -1,0 +1,10 @@
+/* story cutscenes */
+.storyPanel{max-width:780px}
+.storyTop{display:flex;justify-content:space-between;align-items:center;gap:12px}
+.storyText{margin-top:14px;font-size:16px;line-height:1.7;white-space:pre-wrap}
+.storyActions{margin-top:16px;display:flex;justify-content:flex-end}
+.storyText .who{opacity:.85;font-weight:1000}
+.storyText .say{margin-top:8px}
+
+@keyframes doomPulse{0%,100%{transform:translateY(0);filter:none}50%{transform:translateY(-1px);filter:brightness(1.15)}}
+#doomChip.danger{animation:doomPulse .45s infinite; box-shadow:0 0 0 2px rgba(255,71,71,.18) inset}
