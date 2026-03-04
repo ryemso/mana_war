@@ -579,10 +579,10 @@
   // Units
   // =========================
   const UNIT_DB = [
-    { id:"U1", name:"개미 병사", cost:8,  hp:240, atk:18, rate:0.9, range:24,  speed:70,  unlockAt: "1-01" },
-    { id:"U2", name:"단타 자객", cost:14, hp:180, atk:42, rate:1.4, range:22,  speed:110, unlockAt: "1-01" },
+    { id:"U1", name:"개미 병사", cost:8,  hp:240, atk:18, rate:0.9, range:45,  speed:70,  unlockAt: "1-01" },
+    { id:"U2", name:"단타 자객", cost:14, hp:180, atk:42, rate:1.4, range:42,  speed:110, unlockAt: "1-01" },
     { id:"U3", name:"헤지 마법사", cost:26, hp:220, atk:22, rate:0.7, range:140, speed:60,  unlockAt: "1-01" },
-    { id:"U4", name:"포지션 브레이커", cost:36, hp:360, atk:38, rate:0.9, range:28,  speed:80,  unlockAt: "1-02" },
+    { id:"U4", name:"포지션 브레이커", cost:36, hp:360, atk:38, rate:0.9, range:45,  speed:80,  unlockAt: "1-02" },
     { id:"U5", name:"리밸런스 대포",   cost:52, hp:260, atk:78, rate:1.6, range:170, speed:55,  unlockAt: "1-04" },
   ];
 
@@ -720,7 +720,7 @@
     const m = state.main, isMid = (state.sub===MIDBOSS_SUB_INDEX);
     let hp = 170 + m*28, atk = 13 + m*2, speed = 60 + m*2, rate = 1.0;
     if(isMid){ hp *= 1.55; atk *= 1.35; speed *= 0.92; rate = 0.9; }
-    state.enemies.push({ x:CFG.enemySpawnX, y:CFG.laneY, hp:Math.round(hp), maxHp:Math.round(hp), atk:Math.round(atk), rate, range:24, speed, cd:0, attackAnim:0 });
+    state.enemies.push({ x:CFG.enemySpawnX, y:CFG.laneY, hp:Math.round(hp), maxHp:Math.round(hp), atk:Math.round(atk), rate, range:45, speed, cd:0, attackAnim:0 });
   }
 
   function enemySpawnInterval(){ let t = CFG.enemySpawnEvery * (1 - (state.main-1)*0.05); if(state.sub===MIDBOSS_SUB_INDEX) t *= 0.92; return clamp(t, 0.9, 3.5); }
@@ -994,22 +994,12 @@
     ctx.ellipse(drawX, drawY + 18, 14, 4, 0, 0, Math.PI*2);
     ctx.fill();
 
-    // Unit Icon (Emoji)
-    ctx.font = "34px sans-serif";
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    let icon = isPlayer ? "🐜" : "🕴️";
+    // Draw Procedural Character Instead of Emoji
     if (isPlayer) {
-      if (u.name.includes("단타")) icon = "🗡️";
-      else if (u.name.includes("마법사")) icon = "🧙";
-      else if (u.name.includes("브레이커")) icon = "🛡️";
-      else if (u.name.includes("대포")) icon = "🚀";
+      drawPlayerUnit(ctx, u, drawX, drawY);
     } else {
-      if (u.maxHp > 300) icon = "🐻"; // Bear
-      if (u.maxHp > 600) icon = "🐂"; // Bull
-      if (u.name && u.name.includes("보스")) icon = "👹"; 
+      drawEnemyUnit(ctx, u, drawX, drawY);
     }
-    ctx.fillText(icon, drawX, drawY);
 
     // Health bar
     let hpRatio = clamp(u.hp / u.maxHp, 0, 1);
@@ -1020,6 +1010,83 @@
     ctx.fillRect(drawX - bw/2, drawY + 22, bw * hpRatio, 4);
 
     ctx.restore();
+  }
+
+  function drawPlayerUnit(ctx, u, x, y) {
+    ctx.fillStyle = "#00cec9"; // Neon Mint
+    ctx.strokeStyle = "#00cec9";
+    ctx.lineWidth = 2;
+
+    // Abdomen (배)
+    ctx.beginPath(); ctx.ellipse(x - 12, y + 2, 7, 5, 0, 0, Math.PI*2); ctx.fill();
+    // Thorax (가슴)
+    ctx.beginPath(); ctx.ellipse(x - 2, y - 2, 6, 5, 0, 0, Math.PI*2); ctx.fill();
+    // Head (머리)
+    ctx.beginPath(); ctx.arc(x + 6, y - 6, 5, 0, Math.PI*2); ctx.fill();
+    // Eye
+    ctx.fillStyle = "#fff";
+    ctx.beginPath(); ctx.arc(x + 7, y - 7, 1.5, 0, Math.PI*2); ctx.fill();
+
+    // Legs
+    ctx.beginPath(); ctx.moveTo(x - 2, y + 2); ctx.lineTo(x - 6, y + 12); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(x, y + 2); ctx.lineTo(x + 2, y + 12); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(x + 2, y); ctx.lineTo(x + 8, y + 10); ctx.stroke();
+
+    // Antenna
+    ctx.beginPath(); ctx.moveTo(x + 8, y - 10); ctx.lineTo(x + 12, y - 15); ctx.stroke();
+
+    // Specific Equipments (병종별 장비 시각화)
+    if (u.name.includes("단타")) {
+      ctx.fillStyle = "#dfe6e9";
+      ctx.fillRect(x + 8, y - 2, 8, 2); // right dagger
+      ctx.fillRect(x + 4, y + 4, 8, 2); // left dagger
+    } else if (u.name.includes("마법사")) {
+      ctx.strokeStyle = "#fdcb6e"; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(x + 6, y - 10); ctx.lineTo(x + 10, y + 12); ctx.stroke();
+      ctx.fillStyle = "#74b9ff";
+      ctx.beginPath(); ctx.arc(x + 6, y - 12, 4, 0, Math.PI*2); ctx.fill();
+    } else if (u.name.includes("브레이커")) {
+      ctx.strokeStyle = "rgba(0, 206, 201, 0.6)"; ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.arc(x + 10, y, 12, -Math.PI/3, Math.PI/3); ctx.stroke();
+    } else if (u.name.includes("대포")) {
+      ctx.fillStyle = "#636e72";
+      ctx.fillRect(x - 10, y - 16, 20, 6);
+      ctx.fillStyle = "#ff7675"; // Cannon tip
+      ctx.fillRect(x + 10, y - 16, 4, 6);
+    }
+  }
+
+  function drawEnemyUnit(ctx, u, x, y) {
+    if (u.maxHp > 800) { // Big Boss (Bull Market Demon)
+      ctx.fillStyle = "#d63031"; // Red
+      ctx.beginPath(); ctx.arc(x, y - 10, 16, 0, Math.PI*2); ctx.fill();
+      ctx.fillStyle = "#2d3436";
+      ctx.beginPath(); ctx.moveTo(x - 12, y - 22); ctx.lineTo(x - 20, y - 35); ctx.lineTo(x - 5, y - 24); ctx.fill(); // Left Horn
+      ctx.beginPath(); ctx.moveTo(x + 12, y - 22); ctx.lineTo(x + 20, y - 35); ctx.lineTo(x + 5, y - 24); ctx.fill(); // Right Horn
+      // Eyes
+      ctx.fillStyle = "#ffeaa7";
+      ctx.beginPath(); ctx.arc(x - 6, y - 12, 3, 0, Math.PI*2); ctx.fill();
+      ctx.beginPath(); ctx.arc(x + 6, y - 12, 3, 0, Math.PI*2); ctx.fill();
+    } else if (u.maxHp > 300) { // Mid Boss (Bear Market)
+      ctx.fillStyle = "#b2bec3"; // Dark gray
+      ctx.beginPath(); ctx.arc(x, y - 5, 14, 0, Math.PI*2); ctx.fill();
+      // Ears
+      ctx.beginPath(); ctx.arc(x - 10, y - 16, 5, 0, Math.PI*2); ctx.fill();
+      ctx.beginPath(); ctx.arc(x + 10, y - 16, 5, 0, Math.PI*2); ctx.fill();
+      // Eyes
+      ctx.fillStyle = "#ff7675";
+      ctx.beginPath(); ctx.arc(x - 5, y - 6, 2, 0, Math.PI*2); ctx.fill();
+    } else { // Suit agent (일반 요원)
+      ctx.fillStyle = "#2d3436"; // Suit
+      ctx.fillRect(x - 6, y - 8, 12, 20); // Body
+      ctx.fillStyle = "#ffeaa7"; // Skin
+      ctx.beginPath(); ctx.arc(x, y - 14, 6, 0, Math.PI*2); ctx.fill(); // Head
+      ctx.fillStyle = "#d63031"; // Tie
+      ctx.beginPath(); ctx.moveTo(x - 2, y - 8); ctx.lineTo(x + 2, y - 8); ctx.lineTo(x, y + 4); ctx.fill();
+      // Briefcase (서류가방)
+      ctx.fillStyle = "#636e72";
+      ctx.fillRect(x - 12, y + 2, 6, 8);
+    }
   }
 
   function drawParticlesSystem() {
